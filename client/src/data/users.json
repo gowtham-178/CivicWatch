@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "email": "john.doe@email.com",
+    "password": "user123",
+    "name": "John Doe",
+    "role": "citizen",
+    "phone": "+1-555-0123",
+    "address": "123 Main St, City, State"
+  },
+  {
+    "id": 2,
+    "email": "jane.smith@email.com",
+    "password": "user456",
+    "name": "Jane Smith",
+    "role": "citizen",
+    "phone": "+1-555-0456",
+    "address": "456 Oak Ave, City, State"
+  },
+  {
+    "id": 3,
+    "email": "admin@civicwatch.com",
+    "password": "admin123",
+    "name": "Admin User",
+    "role": "admin",
+    "department": "Administration",
+    "permissions": ["view_all", "edit_all", "assign_tasks", "view_analytics"]
+  },
+  {
+    "id": 4,
+    "email": "supervisor@civicwatch.com",
+    "password": "super123",
+    "name": "Department Supervisor",
+    "role": "admin",
+    "department": "Public Works",
+    "permissions": ["view_all", "edit_assigned", "assign_tasks"]
+  }
+]
