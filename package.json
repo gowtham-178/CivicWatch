@@ -1,5 +1,5 @@
 {
-  "name": "civic-watch",
+  "name": "nodemon",
   "version": "1.0.0",
   "description": "The workflow of the civic issue reporting system begins with citizens using a mobile-friendly interface to easily submit reports containing descriptions, photos, and location details, which are then stored (currently as static data, later through backend APIs) and displayed in a personal dashboard where users can track their report status through stages such as confirmation, acknowledgment, and resolution with notification updates; on the administrative side, staff access a centralized web dashboard to view, filter, and categorize reports, update statuses, and assign tasks to relevant departments like sanitation or public works, while an analytics section presents trends and response metrics, and in the future, backend integration with an automated routing engine will ensure reports are intelligently allocated, enabling real-time synchronization between citizen updates and administrative actions to drive transparency, efficiency, and civic engagement.",
   "homepage": "https://github.com/gopikiran22001/CivicWatch#readme",
@@ -15,8 +15,13 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
+    "server": "nodemon src/index.js",
     "client": "cd client && npm start",
-    "install-all": "cd client && npm install",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "concurrently \"npm run server\" \"npm run client\""
+  },
+  "dependencies": {
+    "concurrently": "^9.2.1",
+    "express": "^5.1.0",
+    "mongoose": "^8.19.1"
   }
 }

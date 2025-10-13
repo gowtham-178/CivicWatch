@@ -37,14 +37,14 @@ const Login = () => {
     const result = await login(formData.email, formData.password);
     
     if (result.success) {
-      const redirectPath = result.user.role === 'admin' ? '/admin' : '/';
-      navigate(redirectPath, { replace: true });
+      navigate(from, { replace: true });
     } else {
       setError(result.error);
     }
     
     setLoading(false);
   };
+
 
   const quickLogin = (email, password) => {
     setFormData({ email, password });

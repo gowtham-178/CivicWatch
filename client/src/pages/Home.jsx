@@ -1,17 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import MapView from '../components/MapView';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { Plus, TrendingUp, Users, Clock } from 'lucide-react';
-import reportsData from '../data/reports.json';
+
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const Home = () => {
   const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { token } = useAuth();
 
   useEffect(() => {
-    setReports(reportsData);
+    fetchReports();
   }, []);
+
+  const fetchReports = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/reports`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setReports(data.success ? data.data.docs : []);
+      }
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const stats = {
     total: reports.length,
@@ -128,8 +151,8 @@ const Home = () => {
               <div key={report.id} className="flex items-center justify-between p-5 bg-gradient-to-r from-neutral-50 to-primary-50/30 rounded-2xl border border-neutral-200/50 hover:shadow-soft transition-all duration-300">
                 <div className="flex-1">
                   <h3 className="font-semibold text-neutral-900 mb-1">{report.title}</h3>
-                  <p className="text-sm text-neutral-600 mb-2">{report.location}</p>
-                  <p className="text-xs text-neutral-500">{new Date(report.submittedAt).toLocaleDateString()}</p>
+                  <p className="text-sm text-neutral-600 mb-2">{report.location?.address}</p>
+                  <p className="text-xs text-neutral-500">{new Date(report.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div className="flex items-center space-x-3">
                   <span className={`px-3 py-1.5 text-xs font-medium rounded-full ${

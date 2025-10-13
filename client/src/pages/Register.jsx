@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { MapPin, Eye, EyeOff } from 'lucide-react';
@@ -45,11 +46,37 @@ const Register = () => {
       return;
     }
 
-    // Simulate registration
-    setTimeout(() => {
-      alert('Registration successful! Please login with your credentials.');
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+      confirmpassword: formData.confirmPassword,
+      phone: formData.phone,
+      address: formData.address
+        }),
+        credentials: 'include'
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        setError(data.error || 'Registration failed');
+        setLoading(false);
+        return;
+      }
+
+      alert('Registration successful! Please login.');
       navigate('/login');
-    }, 1000);
+    } catch (err) {
+      console.error(err);
+      setError('Server error. Please try again.');
+    } finally {
+    setLoading(false);
+    }
   };
 
   return (
