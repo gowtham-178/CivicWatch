@@ -29,6 +29,26 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      // Try admin login first
+      const adminResponse = await fetch(`${API_BASE_URL}/admin-auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username: email, password }),
+      });
+
+      const adminData = await adminResponse.json();
+
+      if (adminData.success) {
+        setUser(adminData.admin);
+        setToken(adminData.token);
+        localStorage.setItem('civicwatch_user', JSON.stringify(adminData.admin));
+        localStorage.setItem('civicwatch_token', adminData.token);
+        return { success: true, user: adminData.admin };
+      }
+      
+      // Try regular user login
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {

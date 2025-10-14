@@ -37,7 +37,9 @@ const Login = () => {
     const result = await login(formData.email, formData.password);
     
     if (result.success) {
-      navigate(from, { replace: true });
+      // Redirect based on user role
+      const redirectPath = result.user.role === 'admin' ? '/admin' : '/';
+      navigate(redirectPath, { replace: true });
     } else {
       setError(result.error);
     }
@@ -145,10 +147,10 @@ const Login = () => {
                 <button
                   type="button"
                   className="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-primary-50 to-primary-100 hover:from-primary-100 hover:to-primary-200 text-primary-700 rounded-xl font-medium transition-all duration-300 border border-primary-200"
-                  onClick={() => quickLogin('john.doe@email.com', 'user123')}
+                  onClick={() => quickLogin('user@test.com', 'user123')}
                 >
                   <User className="h-5 w-5 mr-2" />
-                  Login as Citizen
+                  Login as User
                 </button>
                 <button
                   type="button"
@@ -160,6 +162,8 @@ const Login = () => {
                 </button>
               </div>
             </div>
+
+
 
             <div className="mt-6">
               <div className="text-center">
@@ -180,8 +184,8 @@ const Login = () => {
             <h3 className="text-sm font-semibold text-neutral-900 mb-3">Demo Credentials</h3>
             <div className="space-y-2 text-xs text-neutral-600">
               <div className="flex justify-between">
-                <strong className="text-primary-700">Citizen:</strong> 
-                <span className="font-mono">john.doe@email.com / user123</span>
+                <strong className="text-primary-700">User:</strong> 
+                <span className="font-mono">user@test.com / user123</span>
               </div>
               <div className="flex justify-between">
                 <strong className="text-secondary-700">Admin:</strong> 

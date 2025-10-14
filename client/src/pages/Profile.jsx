@@ -8,7 +8,7 @@ const Profile = () => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    name: user?.name || user?.username || '',
     email: user?.email || '',
     phone: user?.phone || '',
     address: user?.address || ''
@@ -30,7 +30,7 @@ const Profile = () => {
 
   const handleCancel = () => {
     setFormData({
-      name: user?.name || '',
+      name: user?.name || user?.username || '',
       email: user?.email || '',
       phone: user?.phone || '',
       address: user?.address || ''
@@ -108,7 +108,7 @@ const Profile = () => {
                       <div className="p-2 bg-primary-100 rounded-xl">
                         <User className="h-5 w-5 text-primary-600" />
                       </div>
-                      <span className="text-neutral-900 font-medium">{user?.name}</span>
+                      <span className="text-neutral-900 font-medium">{user?.name || user?.username}</span>
                     </div>
                   )}
                 </div>

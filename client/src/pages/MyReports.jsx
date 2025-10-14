@@ -4,18 +4,45 @@ import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { Plus, Clock, CheckCircle, AlertCircle, Bell } from 'lucide-react';
-import reportsData from '../data/reports.json';
+
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const MyReports = () => {
   const [reports, setReports] = useState([]);
   const [filter, setFilter] = useState('all');
-  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const { user, token } = useAuth();
 
   useEffect(() => {
-    // Filter reports by logged-in user
-    const userReports = reportsData.filter(report => report.submittedBy === user?.name);
-    setReports(userReports);
-  }, [user]);
+    fetchMyReports();
+  }, [user, token]);
+
+  const fetchMyReports = async () => {
+    if (!user || !token) return;
+    
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/reports/my-reports`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setReports(data.data);
+      } else {
+        setError(data.error || 'Failed to fetch reports');
+      }
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -44,11 +71,33 @@ const MyReports = () => {
     return report.status.toLowerCase().replace(' ', '-') === filter;
   });
 
-  const notifications = [
-    { id: 1, message: "Your report 'Broken Streetlight' has been acknowledged", time: "2 hours ago", type: "info" },
-    { id: 2, message: "Your report 'Pothole on Oak Street' is now in progress", time: "1 day ago", type: "success" },
-    { id: 3, message: "Your report 'Overflowing Trash Bin' has been resolved", time: "3 days ago", type: "success" },
-  ];
+  const getNotifications = () => {
+    return reports.slice(0, 3).map(report => {
+      const daysSince = Math.floor((new Date() - new Date(report.createdAt)) / (1000 * 60 * 60 * 24));
+      const timeText = daysSince === 0 ? 'Today' : daysSince === 1 ? '1 day ago' : `${daysSince} days ago`;
+      
+      let message, type;
+      if (report.status === 'Resolved') {
+        message = `Your report '${report.title}' has been resolved`;
+        type = 'success';
+      } else if (report.status === 'In Progress') {
+        message = `Your report '${report.title}' is now in progress`;
+        type = 'success';
+      } else {
+        message = `Your report '${report.title}' has been acknowledged`;
+        type = 'info';
+      }
+      
+      return {
+        id: report._id,
+        message,
+        time: timeText,
+        type
+      };
+    });
+  };
+
+  const notifications = getNotifications();
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
@@ -92,8 +141,26 @@ const MyReports = () => {
 
           {/* Reports List */}
           <div className="space-y-4">
-            {filteredReports.map((report) => (
-              <Card key={report.id} hover className="group">
+            {loading ? (
+              <Card className="text-center py-16">
+                <Card.Content>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                  <p className="text-neutral-600">Loading your reports...</p>
+                </Card.Content>
+              </Card>
+            ) : error ? (
+              <Card className="text-center py-16">
+                <Card.Content>
+                  <div className="p-4 bg-gradient-to-br from-red-100 to-red-200 rounded-2xl w-fit mx-auto mb-6">
+                    <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-neutral-900 mb-3">Error Loading Reports</h3>
+                  <p className="text-neutral-600 mb-8">{error}</p>
+                  <Button onClick={fetchMyReports}>Try Again</Button>
+                </Card.Content>
+              </Card>
+            ) : filteredReports.map((report) => (
+              <Card key={report._id} hover className="group">
                 <Card.Content>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -109,10 +176,10 @@ const MyReports = () => {
                           <strong className="mr-2 text-neutral-700">Category:</strong> {report.category}
                         </span>
                         <span className="flex items-center font-medium">
-                          <strong className="mr-2 text-neutral-700">Location:</strong> {report.location}
+                          <strong className="mr-2 text-neutral-700">Location:</strong> {report.location.address}
                         </span>
                         <span className="flex items-center font-medium">
-                          <strong className="mr-2 text-neutral-700">Submitted:</strong> {new Date(report.submittedAt).toLocaleDateString()}
+                          <strong className="mr-2 text-neutral-700">Submitted:</strong> {new Date(report.createdAt).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
@@ -133,7 +200,7 @@ const MyReports = () => {
               </Card>
             ))}
 
-            {filteredReports.length === 0 && (
+            {!loading && !error && filteredReports.length === 0 && (
               <Card className="text-center py-16">
                 <Card.Content>
                   <div className="p-4 bg-gradient-to-br from-neutral-100 to-primary-100 rounded-2xl w-fit mx-auto mb-6">
@@ -168,7 +235,7 @@ const MyReports = () => {
             </Card.Header>
             <Card.Content>
               <div className="space-y-4">
-                {notifications.map((notification) => (
+                {notifications.length > 0 ? notifications.map((notification) => (
                   <div key={notification.id} className="flex items-start space-x-4 p-4 bg-gradient-to-r from-neutral-50 to-primary-50/30 rounded-2xl border border-neutral-200/50 hover:shadow-soft transition-all duration-300">
                     <div className={`w-3 h-3 rounded-full mt-1.5 shadow-sm ${
                       notification.type === 'success' ? 'bg-accent-500' : 'bg-primary-500'
@@ -178,7 +245,11 @@ const MyReports = () => {
                       <p className="text-xs text-neutral-500 mt-2 font-medium">{notification.time}</p>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-neutral-500">No notifications yet</p>
+                  </div>
+                )}
               </div>
             </Card.Content>
           </Card>

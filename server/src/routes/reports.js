@@ -31,6 +31,19 @@ const upload = multer({
   }
 });
 
+// Multer error handling middleware
+const handleMulterError = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ success: false, error: 'File too large. Maximum size is 5MB.' });
+    }
+  }
+  if (err) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
+  next();
+};
+
 // Get all reports (with filtering options)
 router.get('/', async (req, res) => {
   try {
@@ -113,9 +126,21 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new report
-router.post('/', auth, upload.single('image'), async (req, res) => {
+router.post('/', auth, upload.single('image'), handleMulterError, async (req, res) => {
   try {
     const { title, description, location, category, priority } = req.body;
+    
+    console.log('Report submission data:', { title, description, location, category, priority });
+    console.log('User ID:', req.user.id);
+    console.log('File:', req.file);
+    
+    // Validate required fields
+    if (!title || !description || !location || !category) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields: title, description, location, category' 
+      });
+    }
     
     // Process uploaded image
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
@@ -137,8 +162,8 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     
     res.status(201).json({ success: true, data: newReport });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: 'Server error' });
+    console.error('Report creation error:', err);
+    res.status(500).json({ success: false, error: err.message || 'Server error' });
   }
 });
 

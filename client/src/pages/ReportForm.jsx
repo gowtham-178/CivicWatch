@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Upload, Camera } from 'lucide-react';
+import { MapPin, Upload, Camera, FileCheck } from 'lucide-react';
 import Card from '../components/Card';
+import SuccessModal from '../components/SuccessModal';
 import { useAuth } from '../context/AuthContext';
 
 const API_BASE_URL = 'http://localhost:5000/api';
@@ -12,6 +13,7 @@ const ReportForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [categories, setCategories] = useState([]);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -81,8 +83,7 @@ const ReportForm = () => {
       const data = await response.json();
 
       if (data.success) {
-        alert('Report submitted successfully! You will receive updates on its progress.');
-        navigate('/my-reports');
+        setShowSuccessModal(true);
       } else {
         setError(data.error || 'Failed to submit report');
       }
@@ -259,6 +260,16 @@ const ReportForm = () => {
           </form>
         </Card.Content>
       </Card>
+      
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Report Submitted Successfully!"
+        message="Thank you for helping improve your community. Your report has been submitted and you will receive updates on its progress."
+        actionText="View My Reports"
+        onAction={() => navigate('/my-reports')}
+        icon={FileCheck}
+      />
     </div>
   );
 };

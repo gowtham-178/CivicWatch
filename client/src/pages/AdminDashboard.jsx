@@ -12,14 +12,29 @@ import {
   BarChart3,
   ArrowRight
 } from 'lucide-react';
-import reportsData from '../data/reports.json';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const AdminDashboard = () => {
   const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setReports(reportsData);
+    fetchReports();
   }, []);
+
+  const fetchReports = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/reports`);
+      const data = await response.json();
+      if (data.success) {
+        setReports(data.data.docs || []);
+      }
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const stats = {
     total: reports.length,
@@ -31,7 +46,8 @@ const AdminDashboard = () => {
   const recentReports = reports.slice(0, 5);
 
   const departmentStats = reports.reduce((acc, report) => {
-    acc[report.department] = (acc[report.department] || 0) + 1;
+    const dept = report.assignedTo?.name || 'Unassigned';
+    acc[dept] = (acc[dept] || 0) + 1;
     return acc;
   }, {});
 
@@ -119,10 +135,10 @@ const AdminDashboard = () => {
           <Card.Content>
             <div className="space-y-4">
               {recentReports.map((report) => (
-                <div key={report.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={report._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1">
                     <h3 className="font-medium text-gray-900">{report.title}</h3>
-                    <p className="text-sm text-gray-600">{report.location}</p>
+                    <p className="text-sm text-gray-600">{report.location.address}</p>
                     <div className="flex items-center space-x-2 mt-1">
                       <span className={`px-2 py-1 text-xs rounded-full ${
                         report.status === 'Resolved' ? 'bg-green-100 text-green-800' :
@@ -141,7 +157,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                   <div className="text-xs text-gray-500">
-                    {new Date(report.submittedAt).toLocaleDateString()}
+                    {new Date(report.createdAt).toLocaleDateString()}
                   </div>
                 </div>
               ))}

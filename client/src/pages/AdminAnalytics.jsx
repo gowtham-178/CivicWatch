@@ -17,15 +17,30 @@ import {
   AreaChart
 } from 'recharts';
 import { TrendingUp, Clock, Users, Target } from 'lucide-react';
-import reportsData from '../data/reports.json';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const AdminAnalytics = () => {
   const [reports, setReports] = useState([]);
   const [timeRange, setTimeRange] = useState('30');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setReports(reportsData);
+    fetchReports();
   }, []);
+
+  const fetchReports = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/reports`);
+      const data = await response.json();
+      if (data.success) {
+        setReports(data.data.docs || []);
+      }
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Category distribution data
   const categoryData = reports.reduce((acc, report) => {
@@ -51,11 +66,12 @@ const AdminAnalytics = () => {
 
   // Department workload data
   const departmentData = reports.reduce((acc, report) => {
-    const existing = acc.find(item => item.department === report.department);
+    const department = report.assignedTo?.name || 'Unassigned';
+    const existing = acc.find(item => item.department === department);
     if (existing) {
       existing.reports += 1;
     } else {
-      acc.push({ department: report.department, reports: 1 });
+      acc.push({ department, reports: 1 });
     }
     return acc;
   }, []);

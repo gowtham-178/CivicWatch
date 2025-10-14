@@ -7,10 +7,26 @@ import Button from './Button';
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [hoverTimeout, setHoverTimeout] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isAdmin: userIsAdmin } = useAuth();
   const isAdmin = location.pathname.startsWith('/admin');
+
+  const handleMouseEnter = () => {
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+      setHoverTimeout(null);
+    }
+    setShowUserMenu(true);
+  };
+
+  const handleMouseLeave = () => {
+    const timeout = setTimeout(() => {
+      setShowUserMenu(false);
+    }, 250); // 0.25 second delay
+    setHoverTimeout(timeout);
+  };
 
 
 
@@ -26,7 +42,7 @@ const Navbar = () => {
     { to: '/admin/analytics', label: 'Analytics', icon: MapPin },
   ];
 
-  const links = isAdmin ? adminLinks : citizenLinks;
+  const links = userIsAdmin() ? adminLinks : citizenLinks;
 
   return (
     <nav className="gradient-bg text-white shadow-large relative">
@@ -57,27 +73,20 @@ const Navbar = () => {
                 <span>{label}</span>
               </Link>
             ))}
-            {user && userIsAdmin() && (
-              <Link
-                to={isAdmin ? '/' : '/admin'}
-                className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 backdrop-blur-sm border border-white/20"
-              >
-                {isAdmin ? 'Citizen View' : 'Admin View'}
-              </Link>
-            )}
+
             
             {user ? (
               <div 
                 className="relative z-[100]"
-                onMouseEnter={() => setShowUserMenu(true)}
-                onMouseLeave={() => setShowUserMenu(false)}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
               >
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="flex items-center space-x-3 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-300 focus:outline-none backdrop-blur-sm border border-white/20"
                 >
                   <UserCircle className="h-6 w-6" />
-                  <span className="text-sm">{user.name}</span>
+                  <span className="text-sm">{user.name || user.username}</span>
                 </button>
                 
                 {showUserMenu && (
@@ -161,16 +170,7 @@ const Navbar = () => {
                 <span>{label}</span>
               </Link>
             ))}
-            {user && userIsAdmin() && (
-              <Link
-                to={isAdmin ? '/' : '/admin'}
-                className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-400 px-3 py-2 rounded-md text-base font-medium"
-                onClick={() => setIsOpen(false)}
-              >
-                <Settings className="h-5 w-5" />
-                <span>{isAdmin ? 'Citizen View' : 'Admin View'}</span>
-              </Link>
-            )}
+
             
             {user ? (
               <div className="border-t border-blue-600 pt-3 mt-3">

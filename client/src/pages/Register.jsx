@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { MapPin, Eye, EyeOff } from 'lucide-react';
+import SuccessModal from '../components/SuccessModal';
+import { MapPin, Eye, EyeOff, UserCheck } from 'lucide-react';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -17,6 +18,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   
   const navigate = useNavigate();
 
@@ -69,8 +71,7 @@ const Register = () => {
         return;
       }
 
-      alert('Registration successful! Please login.');
-      navigate('/login');
+      setShowSuccessModal(true);
     } catch (err) {
       console.error(err);
       setError('Server error. Please try again.');
@@ -234,6 +235,16 @@ const Register = () => {
           </Card.Content>
         </Card>
       </div>
+      
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Welcome to CivicWatch!"
+        message="Your account has been created successfully. You can now sign in and start reporting community issues."
+        actionText="Go to Login"
+        onAction={() => navigate('/login')}
+        icon={UserCheck}
+      />
     </div>
   );
 };

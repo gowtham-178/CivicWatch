@@ -14,7 +14,7 @@ import {
   MapPin,
   Calendar
 } from 'lucide-react';
-import reportsData from '../data/reports.json';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const AdminReports = () => {
   const [reports, setReports] = useState([]);
@@ -25,11 +25,26 @@ const AdminReports = () => {
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [selectedReport, setSelectedReport] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setReports(reportsData);
-    setFilteredReports(reportsData);
+    fetchReports();
   }, []);
+
+  const fetchReports = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/reports`);
+      const data = await response.json();
+      if (data.success) {
+        setReports(data.data.docs || []);
+        setFilteredReports(data.data.docs || []);
+      }
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let filtered = reports;
@@ -38,7 +53,7 @@ const AdminReports = () => {
       filtered = filtered.filter(report =>
         report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        report.location.toLowerCase().includes(searchTerm.toLowerCase())
+        report.location.address.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -59,7 +74,7 @@ const AdminReports = () => {
 
   const handleStatusUpdate = (reportId, newStatus) => {
     setReports(prev => prev.map(report =>
-      report.id === reportId
+      report._id === reportId
         ? { ...report, status: newStatus, updatedAt: new Date().toISOString() }
         : report
     ));
@@ -67,8 +82,8 @@ const AdminReports = () => {
 
   const handleDepartmentAssign = (reportId, department) => {
     setReports(prev => prev.map(report =>
-      report.id === reportId
-        ? { ...report, department, updatedAt: new Date().toISOString() }
+      report._id === reportId
+        ? { ...report, assignedTo: { name: department }, updatedAt: new Date().toISOString() }
         : report
     ));
   };
@@ -107,7 +122,7 @@ const AdminReports = () => {
   };
 
   const categories = [...new Set(reports.map(r => r.category))];
-  const departments = [...new Set(reports.map(r => r.department))];
+  const departments = ['Public Works', 'Sanitation', 'Parks & Recreation', 'Transportation', 'Utilities'];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -222,7 +237,7 @@ const AdminReports = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredReports.map((report) => (
-                  <tr key={report.id} className="hover:bg-gray-50">
+                  <tr key={report._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         {getStatusIcon(report.status)}
@@ -230,7 +245,7 @@ const AdminReports = () => {
                           <div className="text-sm font-medium text-gray-900">{report.title}</div>
                           <div className="text-sm text-gray-500 flex items-center">
                             <MapPin className="h-3 w-3 mr-1" />
-                            {report.location}
+                            {report.location.address}
                           </div>
                           <div className="text-sm text-gray-500">{report.category}</div>
                         </div>
@@ -239,7 +254,7 @@ const AdminReports = () => {
                     <td className="px-6 py-4">
                       <select
                         value={report.status}
-                        onChange={(e) => handleStatusUpdate(report.id, e.target.value)}
+                        onChange={(e) => handleStatusUpdate(report._id, e.target.value)}
                         className={`px-2 py-1 text-xs font-medium rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 ${getStatusColor(report.status)}`}
                       >
                         <option value="Pending">Pending</option>
@@ -254,10 +269,11 @@ const AdminReports = () => {
                     </td>
                     <td className="px-6 py-4">
                       <select
-                        value={report.department}
-                        onChange={(e) => handleDepartmentAssign(report.id, e.target.value)}
+                        value={report.assignedTo?.name || 'Unassigned'}
+                        onChange={(e) => handleDepartmentAssign(report._id, e.target.value)}
                         className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
+                        <option value="Unassigned">Unassigned</option>
                         {departments.map(dept => (
                           <option key={dept} value={dept}>{dept}</option>
                         ))}
@@ -266,11 +282,11 @@ const AdminReports = () => {
                     <td className="px-6 py-4 text-sm text-gray-500">
                       <div className="flex items-center">
                         <Calendar className="h-3 w-3 mr-1" />
-                        {new Date(report.submittedAt).toLocaleDateString()}
+                        {new Date(report.createdAt).toLocaleDateString()}
                       </div>
                       <div className="flex items-center text-xs">
                         <User className="h-3 w-3 mr-1" />
-                        {report.submittedBy}
+                        {report.submittedBy?.name || 'Unknown'}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium">
@@ -339,24 +355,43 @@ const AdminReports = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Location</label>
-              <p className="mt-1 text-sm text-gray-900">{selectedReport.location}</p>
+              <p className="mt-1 text-sm text-gray-900">{selectedReport.location.address}</p>
             </div>
+
+            {selectedReport.images && selectedReport.images.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Attached Images</label>
+                <div className="grid grid-cols-2 gap-4">
+                  {selectedReport.images.map((image, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={`http://localhost:5000${image}`}
+                        alt={`Report image ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                        onClick={() => window.open(`http://localhost:5000${image}`, '_blank')}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Click images to view full size</p>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Submitted By</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedReport.submittedBy}</p>
+                <p className="mt-1 text-sm text-gray-900">{selectedReport.submittedBy?.name || 'Unknown'}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Department</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedReport.department}</p>
+                <label className="block text-sm font-medium text-gray-700">Assigned To</label>
+                <p className="mt-1 text-sm text-gray-900">{selectedReport.assignedTo?.name || 'Unassigned'}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Submitted</label>
-                <p className="mt-1 text-sm text-gray-900">{new Date(selectedReport.submittedAt).toLocaleString()}</p>
+                <p className="mt-1 text-sm text-gray-900">{new Date(selectedReport.createdAt).toLocaleString()}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Last Updated</label>

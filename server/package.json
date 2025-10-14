@@ -7,7 +7,9 @@
     "server": "nodemon src/index.js",
     "client": "cd client && npm start",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "seed": "node src/seed.js"
+    "seed": "node src/seed.js",
+    "add_admin": "node src/seedAdmin.js",
+    "check-admins": "node src/checkAdmins.js"
   },
   "author": "",
   "license": "ISC",
