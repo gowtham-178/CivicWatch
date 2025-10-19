@@ -72,20 +72,54 @@ const AdminReports = () => {
     setFilteredReports(filtered);
   }, [reports, searchTerm, statusFilter, categoryFilter, priorityFilter]);
 
-  const handleStatusUpdate = (reportId, newStatus) => {
-    setReports(prev => prev.map(report =>
-      report._id === reportId
-        ? { ...report, status: newStatus, updatedAt: new Date().toISOString() }
-        : report
-    ));
+  const handleStatusUpdate = async (reportId, newStatus) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/reports/${reportId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('civicwatch_token')}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (response.ok) {
+        setReports(prev => prev.map(report =>
+          report._id === reportId
+            ? { ...report, status: newStatus, updatedAt: new Date().toISOString() }
+            : report
+        ));
+      } else {
+        console.error('Failed to update status');
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
   };
 
-  const handleDepartmentAssign = (reportId, department) => {
-    setReports(prev => prev.map(report =>
-      report._id === reportId
-        ? { ...report, assignedTo: { name: department }, updatedAt: new Date().toISOString() }
-        : report
-    ));
+  const handleDepartmentAssign = async (reportId, department) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/reports/${reportId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('civicwatch_token')}`
+        },
+        body: JSON.stringify({ assignedDepartment: department })
+      });
+      
+      if (response.ok) {
+        setReports(prev => prev.map(report =>
+          report._id === reportId
+            ? { ...report, assignedTo: { name: department }, updatedAt: new Date().toISOString() }
+            : report
+        ));
+      } else {
+        console.error('Failed to assign department');
+      }
+    } catch (error) {
+      console.error('Error assigning department:', error);
+    }
   };
 
   const getStatusIcon = (status) => {

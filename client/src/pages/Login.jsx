@@ -48,9 +48,7 @@ const Login = () => {
   };
 
 
-  const quickLogin = (email, password) => {
-    setFormData({ email, password });
-  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -132,36 +130,7 @@ const Login = () => {
               </Button>
             </form>
 
-            {/* Quick Login Options */}
-            <div className="mt-8">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-neutral-500 font-medium">Quick Login (Demo)</span>
-                </div>
-              </div>
 
-              <div className="mt-6 grid grid-cols-1 gap-3">
-                <button
-                  type="button"
-                  className="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-primary-50 to-primary-100 hover:from-primary-100 hover:to-primary-200 text-primary-700 rounded-xl font-medium transition-all duration-300 border border-primary-200"
-                  onClick={() => quickLogin('user@test.com', 'user123')}
-                >
-                  <User className="h-5 w-5 mr-2" />
-                  Login as User
-                </button>
-                <button
-                  type="button"
-                  className="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-secondary-50 to-secondary-100 hover:from-secondary-100 hover:to-secondary-200 text-secondary-700 rounded-xl font-medium transition-all duration-300 border border-secondary-200"
-                  onClick={() => quickLogin('admin@civicwatch.com', 'admin123')}
-                >
-                  <Shield className="h-5 w-5 mr-2" />
-                  Login as Admin
-                </button>
-              </div>
-            </div>
 
 
 
@@ -178,22 +147,7 @@ const Login = () => {
           </Card.Content>
         </Card>
 
-        {/* Demo Credentials */}
-        <Card className="mt-8 bg-gradient-to-r from-neutral-50 to-primary-50/30">
-          <Card.Content className="py-5 px-6">
-            <h3 className="text-sm font-semibold text-neutral-900 mb-3">Demo Credentials</h3>
-            <div className="space-y-2 text-xs text-neutral-600">
-              <div className="flex justify-between">
-                <strong className="text-primary-700">User:</strong> 
-                <span className="font-mono">user@test.com / user123</span>
-              </div>
-              <div className="flex justify-between">
-                <strong className="text-secondary-700">Admin:</strong> 
-                <span className="font-mono">admin@civicwatch.com / admin123</span>
-              </div>
-            </div>
-          </Card.Content>
-        </Card>
+
       </div>
     </div>
   );
