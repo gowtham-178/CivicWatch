@@ -68,3 +68,7 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });
+
+//node checkAdmins.js
+//node createAdmin.js admin123 admin@example.com mypassword123
+//node resetAdminPassword.js admin123 newpassword456

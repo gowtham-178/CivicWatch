@@ -16,6 +16,8 @@ async function checkAdmins() {
       admins.forEach((admin, index) => {
         console.log(`${index + 1}. Username: ${admin.username}`);
         console.log(`   Email: ${admin.email}`);
+        console.log(`   Password Hash: ${admin.password ? 'Set' : 'Not Set'}`);
+        console.log(`   Role: ${admin.role || 'admin'}`);
         console.log(`   Active: ${admin.isActive || 'undefined'}`);
         console.log(`   Created: ${admin.createdAt || 'N/A'}`);
         console.log('---');

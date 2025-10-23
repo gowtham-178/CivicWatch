@@ -3,15 +3,10 @@ const bcrypt = require('bcrypt');
 const Admin = require('./models/admin');
 require('dotenv').config();
 
-async function createAdmin() {
+async function createAdmin(username, email, password, role = 'admin') {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('Connected to MongoDB');
-    
-    // Get admin details from command line or use defaults
-    const username = process.argv[2] || 'newadmin';
-    const email = process.argv[3] || 'newadmin@civicwatch.com';
-    const password = process.argv[4] || 'admin123';
     
     // Check if admin already exists
     const existingAdmin = await Admin.findOne({ 
@@ -19,30 +14,43 @@ async function createAdmin() {
     });
     
     if (existingAdmin) {
-      console.log('Admin with this username or email already exists');
+      console.log('❌ Admin with this username or email already exists');
       process.exit(1);
     }
-
-    // Create new admin
-    const hashedPassword = await bcrypt.hash(password, 10);
     
-    const admin = new Admin({
+    // Hash password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    
+    // Create new admin
+    const newAdmin = new Admin({
       username,
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      role,
+      isActive: true,
+      createdAt: new Date()
     });
-
-    await admin.save();
-    console.log('✅ Admin created successfully!');
-    console.log(`Username: ${username}`);
-    console.log(`Email: ${email}`);
-    console.log(`Password: ${password}`);
+    
+    await newAdmin.save();
+    console.log('✅ Admin created successfully:');
+    console.log(`   Username: ${username}`);
+    console.log(`   Email: ${email}`);
+    console.log(`   Role: ${role}`);
     
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error creating admin:', error);
+    console.error('❌ Error:', error);
     process.exit(1);
   }
 }
 
-createAdmin();
+// Usage: node createAdmin.js username email password [role]
+const [username, email, password, role] = process.argv.slice(2);
+
+if (!username || !email || !password) {
+  console.log('Usage: node createAdmin.js <username> <email> <password> [role]');
+  process.exit(1);
+}
+
+createAdmin(username, email, password, role);
