@@ -14,7 +14,8 @@ import {
   MapPin,
   Calendar
 } from 'lucide-react';
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
+const API_SERVER_URL = process.env.REACT_APP_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
 
 const AdminReports = () => {
   const [reports, setReports] = useState([]);
@@ -399,10 +400,10 @@ const AdminReports = () => {
                   {selectedReport.images.map((image, index) => (
                     <div key={index} className="relative">
                       <img
-                        src={`http://localhost:5000${image}`}
+                        src={`${API_SERVER_URL}${image}`}
                         alt={`Report image ${index + 1}`}
                         className="w-full h-32 object-cover rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => window.open(`http://localhost:5000${image}`, '_blank')}
+                        onClick={() => window.open(`${API_SERVER_URL}${image}`, '_blank')}
                       />
                     </div>
                   ))}

@@ -15,9 +15,10 @@ import Profile from './pages/Profile';
 
 function App() {
   const [backendStatus, setBackendStatus] = useState('');
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/status')
+    fetch(`${API_BASE_URL}/status`)
       .then(res => res.json())
       .then(data => setBackendStatus(data.status))
       .catch(() => setBackendStatus('Error connecting to backend'));
