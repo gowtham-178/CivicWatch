@@ -10,7 +10,8 @@ const reportRoutes = require('./routes/reports');
 const adminRoutes = require('./routes/admin');
 const categoryRoutes = require('./routes/categories');
 const adminAuthRoutes = require('./routes/adminAuth');
-require('dotenv').config();
+const dotenv = require("dotenv");
+dotenv.config();
 
 const app = express();
 
