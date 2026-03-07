@@ -17,13 +17,12 @@ const app = express();
 
 // Middleware
 const allowedOrigins = [
-  process.env.CLIENT_URL,
-  'http://localhost:3000',
-  'https://civicwatch-frontend-wxr7.onrender.com'
-].filter(Boolean);
+  'https://civicwatch-frontend-wxr7.onrender.com',
+  'http://localhost:3000'
+];
 
 app.use(cors({ 
-  origin: function(origin, callback) {
+  origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
