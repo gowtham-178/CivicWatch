@@ -19,7 +19,7 @@ const app = express();
 const allowedOrigins = [
   process.env.CLIENT_URL,
   'http://localhost:3000',
-  'https://civicwatch-frontend-wxp7.onrender.com'
+  'https://civicwatch-frontend-wxr7.onrender.com'
 ].filter(Boolean);
 
 app.use(cors({ 
