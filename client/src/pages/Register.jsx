@@ -5,8 +5,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import SuccessModal from '../components/SuccessModal';
 import { MapPin, Eye, EyeOff, UserCheck } from 'lucide-react';
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
+import { API_BASE_URL } from '../config';
 
 const Register = () => {
   const [formData, setFormData] = useState({

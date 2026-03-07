@@ -4,8 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { Plus, Clock, CheckCircle, AlertCircle, Bell } from 'lucide-react';
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
+import { API_BASE_URL } from '../config';
 
 const MyReports = () => {
   const [reports, setReports] = useState([]);

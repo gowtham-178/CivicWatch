@@ -14,8 +14,7 @@ import {
   MapPin,
   Calendar
 } from 'lucide-react';
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
-const API_SERVER_URL = process.env.REACT_APP_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
+import { API_BASE_URL, API_SERVER_URL } from '../config';
 
 const AdminReports = () => {
   const [reports, setReports] = useState([]);

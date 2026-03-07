@@ -12,10 +12,10 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminReports from './pages/AdminReports';
 import AdminAnalytics from './pages/AdminAnalytics';
 import Profile from './pages/Profile';
+import { API_BASE_URL } from './config';
 
 function App() {
   const [backendStatus, setBackendStatus] = useState('');
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/status`)

@@ -4,8 +4,7 @@ import { MapPin, Upload, Camera, FileCheck } from 'lucide-react';
 import Card from '../components/Card';
 import SuccessModal from '../components/SuccessModal';
 import { useAuth } from '../context/AuthContext';
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
+import { API_BASE_URL } from '../config';
 
 const ReportForm = () => {
   const navigate = useNavigate();

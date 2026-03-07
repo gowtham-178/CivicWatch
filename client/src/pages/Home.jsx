@@ -5,8 +5,7 @@ import MapView from '../components/MapView';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { Plus, TrendingUp, Users, Clock } from 'lucide-react';
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
+import { API_BASE_URL } from '../config';
 
 const Home = () => {
   const [reports, setReports] = useState([]);
