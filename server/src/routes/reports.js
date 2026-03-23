@@ -6,7 +6,6 @@ const { auth } = require('../middleware/middleware');
 const multer = require('multer');
 const path = require('path');
 
-// Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function(req, file, cb) {
     cb(null, path.join(__dirname, '../../uploads/'));
@@ -18,7 +17,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: function(req, file, cb) {
     const filetypes = /jpeg|jpg|png/;
     const mimetype = filetypes.test(file.mimetype);
@@ -31,7 +30,6 @@ const upload = multer({
   }
 });
 
-// Multer error handling middleware
 const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
@@ -44,7 +42,6 @@ const handleMulterError = (err, req, res, next) => {
   next();
 };
 
-// Get all reports (with filtering options)
 router.get('/', async (req, res) => {
   try {
     const { category, status, priority, search, page = 1, limit = 10 } = req.query;
@@ -54,7 +51,6 @@ router.get('/', async (req, res) => {
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
     
-    // Text search if provided
     if (search) {
       filter.$text = { $search: search };
     }
@@ -85,7 +81,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get reports submitted by the logged-in user
 router.get('/my-reports', auth, async (req, res) => {
   try {
     const reports = await Report.find({ submittedBy: req.user.id })
@@ -100,7 +95,6 @@ router.get('/my-reports', auth, async (req, res) => {
   }
 });
 
-// Get a single report by ID
 router.get('/:id', async (req, res) => {
   try {
     const report = await Report.findById(req.params.id)
@@ -125,16 +119,10 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create a new report
 router.post('/', auth, upload.single('image'), handleMulterError, async (req, res) => {
   try {
     const { title, description, location, category, priority } = req.body;
     
-    console.log('Report submission data:', { title, description, location, category, priority });
-    console.log('User ID:', req.user.id);
-    console.log('File:', req.file);
-    
-    // Validate required fields
     if (!title || !description || !location || !category) {
       return res.status(400).json({ 
         success: false, 
@@ -142,7 +130,6 @@ router.post('/', auth, upload.single('image'), handleMulterError, async (req, re
       });
     }
     
-    // Process uploaded image
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
     
     const newReport = new Report({
@@ -167,7 +154,6 @@ router.post('/', auth, upload.single('image'), handleMulterError, async (req, re
   }
 });
 
-// Update a report
 router.put('/:id', auth, async (req, res) => {
   try {
     const report = await Report.findById(req.params.id);
@@ -176,14 +162,12 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Report not found' });
     }
     
-    // Check if user is the owner or an admin
     if (report.submittedBy.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, error: 'Not authorized to update this report' });
     }
     
     const { title, description, address, lat, lng, category, priority, status } = req.body;
     
-    // Update fields
     if (title) report.title = title;
     if (description) report.description = description;
     if (address) report.location.address = address;
@@ -191,11 +175,9 @@ router.put('/:id', auth, async (req, res) => {
     if (category) report.category = category;
     if (priority) report.priority = priority;
     
-    // Only admins can update status
     if (status && req.user.role === 'admin') {
       report.status = status;
       
-      // If status is changed to resolved, add resolution details
       if (status === 'Resolved' && report.status !== 'Resolved') {
         report.resolutionDetails = {
           resolvedAt: new Date(),
@@ -213,7 +195,6 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
-// Delete a report
 router.delete('/:id', auth, async (req, res) => {
   try {
     const report = await Report.findById(req.params.id);
@@ -222,15 +203,11 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Report not found' });
     }
     
-    // Check if user is the owner or an admin
     if (report.submittedBy.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, error: 'Not authorized to delete this report' });
     }
     
-    // Delete associated comments
     await Comment.deleteMany({ report: req.params.id });
-    
-    // Delete the report
     await Report.findByIdAndDelete(req.params.id);
     
     res.json({ success: true, message: 'Report deleted successfully' });
@@ -240,7 +217,6 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// Add a comment to a report
 router.post('/:id/comments', auth, async (req, res) => {
   try {
     const report = await Report.findById(req.params.id);
@@ -259,12 +235,8 @@ router.post('/:id/comments', auth, async (req, res) => {
     });
     
     await newComment.save();
-    
-    // Add comment to report's comments array
     report.comments.push(newComment._id);
     await report.save();
-    
-    // Populate author details
     await newComment.populate('author', 'name email');
     
     res.status(201).json({ success: true, comment: newComment });
@@ -274,7 +246,6 @@ router.post('/:id/comments', auth, async (req, res) => {
   }
 });
 
-// Upvote a report
 router.post('/:id/upvote', auth, async (req, res) => {
   try {
     const report = await Report.findById(req.params.id);
@@ -283,12 +254,9 @@ router.post('/:id/upvote', auth, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Report not found' });
     }
     
-    // Check if user already upvoted
     if (report.upvotes.includes(req.user.id)) {
-      // Remove upvote (toggle)
       report.upvotes = report.upvotes.filter(id => id.toString() !== req.user.id);
     } else {
-      // Add upvote
       report.upvotes.push(req.user.id);
     }
     

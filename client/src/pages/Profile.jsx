@@ -1,41 +1,170 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { User, Mail, Phone, MapPin, Shield, Edit2, Save, X } from 'lucide-react';
+import { User, Mail, Phone, Edit2, Save, X, Lock } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [reportCount, setReportCount] = useState(0);
   const [formData, setFormData] = useState({
-    name: user?.name || user?.username || '',
+    name: user?.name || '',
     email: user?.email || '',
-    phone: user?.phone || '',
-    address: user?.address || ''
+    phone: user?.phone || ''
   });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchReportCount();
+  }, []);
+
+  const fetchReportCount = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/reports/my-reports`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setReportCount(data.data?.length || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching report count:', error);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData(prev => (({
       ...prev,
       [name]: value
-    }));
+    })));
   };
 
-  const handleSave = () => {
-    console.log('Profile updated:', formData);
-    alert('Profile updated successfully!');
-    setIsEditing(false);
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData(prev => (({
+      ...prev,
+      [name]: value
+    })));
+  };
+
+  const handleSaveProfile = async () => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/myprofile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccess('Profile updated successfully!');
+        setIsEditing(false);
+      } else {
+        setError(data.error || 'Failed to update profile');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Server error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setError('New passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+          confirmPassword: passwordData.confirmPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccess('Password changed successfully!');
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        setIsChangingPassword(false);
+      } else {
+        setError(data.error || 'Failed to change password');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Server error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
     setFormData({
-      name: user?.name || user?.username || '',
+      name: user?.name || '',
       email: user?.email || '',
-      phone: user?.phone || '',
-      address: user?.address || ''
+      phone: user?.phone || ''
     });
     setIsEditing(false);
+    setError('');
+    setSuccess('');
+  };
+
+  const handleCancelPassword = () => {
+    setPasswordData({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+    setIsChangingPassword(false);
+    setError('');
+    setSuccess('');
   };
 
   return (
@@ -70,7 +199,8 @@ const Profile = () => {
                     <Button
                       variant="success"
                       size="sm"
-                      onClick={handleSave}
+                      onClick={handleSaveProfile}
+                      disabled={loading}
                       className="inline-flex items-center space-x-2"
                     >
                       <Save className="h-4 w-4" />
@@ -90,6 +220,16 @@ const Profile = () => {
               </div>
             </Card.Header>
             <Card.Content>
+              {error && (
+                <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm">
+                  {error}
+                </div>
+              )}
+              {success && (
+                <div className="mb-6 bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-xl text-sm">
+                  {success}
+                </div>
+              )}
               <div className="space-y-8">
                 <div>
                   <label className="block text-sm font-semibold text-neutral-700 mb-3">
@@ -108,7 +248,7 @@ const Profile = () => {
                       <div className="p-2 bg-primary-100 rounded-xl">
                         <User className="h-5 w-5 text-primary-600" />
                       </div>
-                      <span className="text-neutral-900 font-medium">{user?.name || user?.username}</span>
+                      <span className="text-neutral-900 font-medium">{user?.name}</span>
                     </div>
                   )}
                 </div>
@@ -117,27 +257,17 @@ const Profile = () => {
                   <label className="block text-sm font-semibold text-neutral-700 mb-3">
                     Email Address
                   </label>
-                  {isEditing ? (
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300"
-                    />
-                  ) : (
-                    <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-neutral-50 to-primary-50/30 rounded-xl border border-neutral-200/50">
-                      <div className="p-2 bg-secondary-100 rounded-xl">
-                        <Mail className="h-5 w-5 text-secondary-600" />
-                      </div>
-                      <span className="text-neutral-900 font-medium">{user?.email}</span>
+                  <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-neutral-50 to-primary-50/30 rounded-xl border border-neutral-200/50">
+                    <div className="p-2 bg-secondary-100 rounded-xl">
+                      <Mail className="h-5 w-5 text-secondary-600" />
                     </div>
-                  )}
+                    <span className="text-neutral-900 font-medium">{user?.email}</span>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-neutral-700 mb-3">
-                    Phone Number
+                    Mobile Number
                   </label>
                   {isEditing ? (
                     <input
@@ -156,94 +286,117 @@ const Profile = () => {
                     </div>
                   )}
                 </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-neutral-700 mb-3">
-                    Address
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300"
-                    />
-                  ) : (
-                    <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-neutral-50 to-primary-50/30 rounded-xl border border-neutral-200/50">
-                      <div className="p-2 bg-yellow-100 rounded-xl">
-                        <MapPin className="h-5 w-5 text-yellow-600" />
-                      </div>
-                      <span className="text-neutral-900 font-medium">{user?.address || 'Not provided'}</span>
-                    </div>
-                  )}
-                </div>
               </div>
             </Card.Content>
           </Card>
         </div>
 
         <div className="lg:col-span-1">
-          <Card hover className="shadow-large">
+          <Card hover className="shadow-large mb-8">
             <Card.Header>
-              <h2 className="text-2xl font-bold text-neutral-900">Account Details</h2>
+              <h2 className="text-2xl font-bold text-neutral-900">Statistics</h2>
             </Card.Header>
             <Card.Content>
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-semibold text-neutral-700 mb-3">
-                    Account Type
+                    Total Reports
                   </label>
-                  <div className={`flex items-center space-x-3 p-4 rounded-xl border ${
-                    user?.role === 'admin' 
-                      ? 'bg-gradient-to-r from-red-50 to-red-100 border-red-200' 
-                      : 'bg-gradient-to-r from-primary-50 to-primary-100 border-primary-200'
-                  }`}>
-                    <div className={`p-2 rounded-xl ${
-                      user?.role === 'admin' ? 'bg-red-200' : 'bg-primary-200'
-                    }`}>
-                      <Shield className={`h-5 w-5 ${user?.role === 'admin' ? 'text-red-600' : 'text-primary-600'}`} />
-                    </div>
-                    <span className="text-neutral-900 font-semibold capitalize">{user?.role}</span>
-                  </div>
-                </div>
-
-                {user?.role === 'admin' && user?.department && (
-                  <div>
-                    <label className="block text-sm font-semibold text-neutral-700 mb-3">
-                      Department
-                    </label>
-                    <div className="p-4 bg-gradient-to-r from-secondary-50 to-secondary-100 rounded-xl border border-secondary-200">
-                      <span className="text-neutral-900 font-semibold">{user.department}</span>
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-semibold text-neutral-700 mb-3">
-                    Member Since
-                  </label>
-                  <div className="p-4 bg-gradient-to-r from-accent-50 to-accent-100 rounded-xl border border-accent-200">
-                    <span className="text-neutral-900 font-semibold">January 2024</span>
+                  <div className="p-4 bg-gradient-to-r from-primary-50 to-primary-100 rounded-xl border border-primary-200">
+                    <span className="text-3xl font-bold text-primary-600">{reportCount}</span>
                   </div>
                 </div>
               </div>
             </Card.Content>
           </Card>
 
-          <Card className="mt-8" hover>
+          <Card className="shadow-large" hover>
             <Card.Header>
               <h2 className="text-2xl font-bold text-neutral-900">Security</h2>
             </Card.Header>
             <Card.Content>
-              <div className="space-y-4">
-                <Button variant="outline" className="w-full justify-center py-3">
-                  Change Password
+              {!isChangingPassword ? (
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-center py-3 inline-flex items-center space-x-2"
+                  onClick={() => setIsChangingPassword(true)}
+                >
+                  <Lock className="h-4 w-4" />
+                  <span>Change Password</span>
                 </Button>
-                <Button variant="outline" className="w-full justify-center py-3">
-                  Two-Factor Authentication
-                </Button>
-              </div>
+              ) : (
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm">
+                      {error}
+                    </div>
+                  )}
+                  {success && (
+                    <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-xl text-sm">
+                      {success}
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                      Current Password
+                    </label>
+                    <input
+                      type="password"
+                      name="currentPassword"
+                      value={passwordData.currentPassword}
+                      onChange={handlePasswordChange}
+                      required
+                      className="w-full px-4 py-2 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Enter current password"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      name="newPassword"
+                      value={passwordData.newPassword}
+                      onChange={handlePasswordChange}
+                      required
+                      className="w-full px-4 py-2 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Enter new password"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                      Confirm Password
+                    </label>
+                    <input
+                      type="password"
+                      name="confirmPassword"
+                      value={passwordData.confirmPassword}
+                      onChange={handlePasswordChange}
+                      required
+                      className="w-full px-4 py-2 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Confirm new password"
+                    />
+                  </div>
+                  <div className="flex space-x-3">
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 py-2"
+                    >
+                      {loading ? 'Updating...' : 'Update'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCancelPassword}
+                      className="flex-1 py-2"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
             </Card.Content>
           </Card>
         </div>

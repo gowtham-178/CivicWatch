@@ -32,7 +32,7 @@ const MapView = ({ reports = [] }) => {
           <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
             <path d="M0,20 Q25,10 50,20 T100,20 L100,80 Q75,90 50,80 T0,80 Z" fill="url(#gradient1)" />
             <defs>
-              <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <linearGradient id="gradient1" x1="0%" y1="0%"  x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#0ea5e9" />
                 <stop offset="100%" stopColor="#10b981" />
               </linearGradient>
