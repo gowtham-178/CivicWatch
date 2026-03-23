@@ -143,9 +143,8 @@ npm run client  # Frontend only
 
 ## 📱 Application Access
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:5000
-- **Admin Panel**: http://localhost:3000/admin
+- **Frontend**: [http://localhost:3000](https://civicwatch-d71x.onrender.com)
+- **Backend API**: [http://localhost:5000](https://civicwatch-backend-480b.onrender.com)
 
 ## 🗂️ File & Folder Descriptions
 
