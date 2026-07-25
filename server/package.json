@@ -5,20 +5,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "seed": "node src/seed.js",
-    "add_admin": "node src/seedAdmin.js",
-    "check-admins": "node src/checkAdmins.js",
-    "test": "jest --detectOpenHandles --forceExit",
-    "test:watch": "jest --watch"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "testTimeout": 30000,
-    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
-    "collectCoverageFrom": [
-      "src/**/*.js",
-      "!src/index.js"
-    ]
+    "add_admin": "node createAdmin.js",
+    "check-admins": "node checkAdmins.js"
   },
   "author": "",
   "license": "ISC",
@@ -37,8 +25,6 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
-    "jest": "^29.7.0",
-    "nodemon": "^3.1.10",
-    "supertest": "^6.3.3"
+    "nodemon": "^3.1.10"
   }
 }

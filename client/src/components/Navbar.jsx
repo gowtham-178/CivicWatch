@@ -50,7 +50,7 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-3 group">
+            <Link to={userIsAdmin() ? "/admin" : "/"} className="flex items-center space-x-3 group">
               <div className="p-2 bg-white/20 rounded-xl group-hover:bg-white/30 transition-all duration-300">
                 <MapPin className="h-6 w-6" />
               </div>
@@ -83,48 +83,70 @@ const Navbar = () => {
               >
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center space-x-3 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-300 focus:outline-none backdrop-blur-sm border border-white/20"
+                  className="flex items-center space-x-2.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-300 focus:outline-none backdrop-blur-sm border border-white/25 text-white"
                 >
-                  <UserCircle className="h-6 w-6" />
-                  <span className="text-sm">{user.name || user.username}</span>
+                  <UserCircle className="h-5 w-5 text-sky-200" />
+                  <span className="text-sm font-semibold truncate max-w-[130px]">
+                    {user.name || user.username || user.email?.split('@')[0] || 'Account'}
+                  </span>
                 </button>
                 
                 {showUserMenu && (
                   <div 
-                    className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1"
+                    className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-2xl py-1 text-slate-800 animate-scale-up"
                     style={{
                       position: 'absolute',
                       top: '100%',
                       right: '0',
                       zIndex: 99999,
                       backgroundColor: 'white',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '0.375rem',
-                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '0.75rem',
+                      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
                     }}
                   >
-                    <div className="px-4 py-2 text-sm text-gray-700 border-b">
-                      <div className="font-medium">{user.name}</div>
-                      <div className="text-gray-500">{user.email}</div>
+                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/80 rounded-t-xl">
+                      <div className="font-bold text-slate-900 text-sm truncate">
+                        {user.name || user.username || 'User'}
+                      </div>
+                      <div className="text-xs text-slate-500 truncate mt-0.5">{user.email}</div>
+                      <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-100 text-sky-800">
+                        {userIsAdmin() ? 'Admin' : 'Citizen'}
+                      </div>
                     </div>
+
                     <Link
                       to="/profile"
                       onClick={() => setShowUserMenu(false)}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="flex items-center w-full px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                     >
-                      <User className="h-4 w-4 mr-2" />
-                      Profile
+                      <User className="h-4 w-4 mr-2.5 text-sky-600" />
+                      <span>Profile & Settings</span>
                     </Link>
+
+                    {!userIsAdmin() && (
+                      <Link
+                        to="/my-reports"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center w-full px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        <FileText className="h-4 w-4 mr-2.5 text-emerald-600" />
+                        <span>My Reports</span>
+                      </Link>
+                    )}
+
+                    <div className="border-t border-slate-100 my-1"></div>
+
                     <button
                       onClick={() => {
                         logout();
                         setShowUserMenu(false);
                         navigate('/login');
                       }}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="flex items-center w-full px-4 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
                     >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sign out
+                      <LogOut className="h-4 w-4 mr-2.5 text-red-500" />
+                      <span>Sign Out</span>
                     </button>
                   </div>
                 )}
@@ -175,9 +197,17 @@ const Navbar = () => {
             {user ? (
               <div className="border-t border-blue-600 pt-3 mt-3">
                 <div className="px-3 py-2 text-blue-100">
-                  <div className="font-medium">{user.name}</div>
+                  <div className="font-medium">{user.name || user.username || 'User'}</div>
                   <div className="text-sm text-blue-200">{user.email}</div>
                 </div>
+                <Link
+                  to="/profile"
+                  className="flex items-center space-x-2 w-full px-3 py-2 text-blue-100 hover:bg-blue-600 rounded-md text-base font-medium"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <User className="h-5 w-5" />
+                  <span>Profile & Settings</span>
+                </Link>
                 <button
                   onClick={() => {
                     logout();

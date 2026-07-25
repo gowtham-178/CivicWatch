@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -12,17 +12,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminReports from './pages/AdminReports';
 import AdminAnalytics from './pages/AdminAnalytics';
 import Profile from './pages/Profile';
-import { API_BASE_URL } from './config';
 
 function App() {
-  const [backendStatus, setBackendStatus] = useState('');
-
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/status`)
-      .then(res => res.json())
-      .then(data => setBackendStatus(data.status))
-      .catch(() => setBackendStatus('Error connecting to backend'));
-  }, []);
   return (
     <AuthProvider>
       <Router>

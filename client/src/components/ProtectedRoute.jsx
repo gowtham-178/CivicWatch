@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
-  const { user, loading } = useAuth();
+  const { user, token, loading } = useAuth();
 
   if (loading) {
     return (
@@ -13,7 +13,9 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
     );
   }
 
-  if (!user) {
+  const isTokenValid = token && token !== 'undefined' && token !== 'null';
+
+  if (!user || !isTokenValid) {
     return <Navigate to="/login" replace />;
   }
 
