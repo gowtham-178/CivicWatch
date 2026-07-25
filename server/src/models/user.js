@@ -9,19 +9,15 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: true,
+      required: false,
       unique: true,
+      sparse: true,
       lowercase: true,
       trim: true
     },
     phone: {
       type: String, 
-      required: true,
-      trim: true
-    },
-    address: {
-      type: String,
-      required: true,
+      required: false,
       trim: true
     },
     password: {
@@ -33,6 +29,18 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['user', 'admin'],
       default: 'user'
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false
+    },
+    emailOtp: {
+      type: String,
+      default: null
+    },
+    otpExpiry: {
+      type: Date,
+      default: null
     },
     isActive: {
       type: Boolean,

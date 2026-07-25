@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Card from '../components/Card';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import { adminAPI } from '../services/api';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -17,317 +18,187 @@ import {
   AreaChart
 } from 'recharts';
 import { TrendingUp, Clock, Users, Target } from 'lucide-react';
-import { API_BASE_URL } from '../config';
 
 const AdminAnalytics = () => {
-  const [reports, setReports] = useState([]);
-  const [timeRange, setTimeRange] = useState('30');
+  const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchReports();
+    fetchDashboardAnalytics();
   }, []);
 
-  const fetchReports = async () => {
+  const fetchDashboardAnalytics = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/reports`);
-      const data = await response.json();
-      if (data.success) {
-        setReports(data.data.docs || []);
-      }
-    } catch (error) {
-      console.error('Error fetching reports:', error);
+      setLoading(true);
+      const res = await adminAPI.getDashboard();
+      setDashboardData(res.data || res);
+    } catch (err) {
+      console.error('Error fetching analytics dashboard:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Category distribution data
-  const categoryData = reports.reduce((acc, report) => {
-    const existing = acc.find(item => item.name === report.category);
-    if (existing) {
-      existing.value += 1;
-    } else {
-      acc.push({ name: report.category, value: 1 });
-    }
-    return acc;
-  }, []);
+  const statusData = dashboardData?.statusCounts?.map((s) => ({ name: s._id, value: s.count })) || [];
+  const categoryData = dashboardData?.categoryCounts?.map((c) => ({ name: c._id, value: c.count })) || [];
+  const recentReportsTrend = dashboardData?.recentReports?.map((r) => ({ date: r._id, count: r.count })) || [];
 
-  // Status distribution data
-  const statusData = reports.reduce((acc, report) => {
-    const existing = acc.find(item => item.name === report.status);
-    if (existing) {
-      existing.value += 1;
-    } else {
-      acc.push({ name: report.status, value: 1 });
-    }
-    return acc;
-  }, []);
+  const totalReports = statusData.reduce((sum, s) => sum + s.value, 0);
+  const resolvedCount = statusData.find((s) => s.name === 'Resolved')?.value || 0;
+  const resolutionRate = totalReports > 0 ? Math.round((resolvedCount / totalReports) * 100) : 0;
 
-  // Department workload data
-  const departmentData = reports.reduce((acc, report) => {
-    const department = report.assignedTo?.name || 'Unassigned';
-    const existing = acc.find(item => item.department === department);
-    if (existing) {
-      existing.reports += 1;
-    } else {
-      acc.push({ department, reports: 1 });
-    }
-    return acc;
-  }, []);
-
-  // Response time trend (simulated data)
-  const responseTimeData = [
-    { month: 'Jan', avgDays: 3.2 },
-    { month: 'Feb', avgDays: 2.8 },
-    { month: 'Mar', avgDays: 2.5 },
-    { month: 'Apr', avgDays: 2.1 },
-    { month: 'May', avgDays: 2.3 },
-    { month: 'Jun', avgDays: 2.0 },
-  ];
-
-  // Reports over time (simulated data)
-  const reportsOverTimeData = [
-    { month: 'Jan', reports: 45, resolved: 38 },
-    { month: 'Feb', reports: 52, resolved: 44 },
-    { month: 'Mar', reports: 48, resolved: 41 },
-    { month: 'Apr', reports: 61, resolved: 55 },
-    { month: 'May', reports: 55, resolved: 48 },
-    { month: 'Jun', reports: 58, resolved: 52 },
-  ];
-
-  const COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
-
-  const stats = {
-    totalReports: reports.length,
-    avgResponseTime: '2.3 days',
-    resolutionRate: '85%',
-    activeReports: reports.filter(r => r.status !== 'Resolved').length,
-  };
+  const COLORS = ['#0284c7', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Analytics Dashboard</h1>
-          <p className="text-gray-600">Insights and trends from community reports</p>
+          <h1 className="text-3xl font-extrabold text-slate-900 mb-1">Analytics & Metrics</h1>
+          <p className="text-sm text-slate-600">Visual performance metrics and civic issue trends</p>
         </div>
-        <select
-          value={timeRange}
-          onChange={(e) => setTimeRange(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="7">Last 7 days</option>
-          <option value="30">Last 30 days</option>
-          <option value="90">Last 90 days</option>
-          <option value="365">Last year</option>
-        </select>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <Card.Content className="flex items-center">
-            <div className="flex-shrink-0">
-              <Target className="h-8 w-8 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Total Reports</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.totalReports}</p>
-              <p className="text-xs text-green-600">+12% from last period</p>
-            </div>
-          </Card.Content>
-        </Card>
+      {loading ? (
+        <div className="py-16 text-center text-xs text-slate-500">Loading analytics metrics...</div>
+      ) : (
+        <>
+          {/* Key Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <Card.Content className="flex items-center p-5">
+                <div className="p-3 bg-sky-500 text-white rounded-xl">
+                  <Target className="h-6 w-6" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-xs font-semibold text-slate-500 uppercase">Registered Citizens</p>
+                  <p className="text-2xl font-bold text-slate-900">{dashboardData?.userCount || 0}</p>
+                </div>
+              </Card.Content>
+            </Card>
 
-        <Card>
-          <Card.Content className="flex items-center">
-            <div className="flex-shrink-0">
-              <Clock className="h-8 w-8 text-yellow-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Avg Response Time</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.avgResponseTime}</p>
-              <p className="text-xs text-green-600">-8% improvement</p>
-            </div>
-          </Card.Content>
-        </Card>
+            <Card>
+              <Card.Content className="flex items-center p-5">
+                <div className="p-3 bg-amber-500 text-white rounded-xl">
+                  <Clock className="h-6 w-6" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-xs font-semibold text-slate-500 uppercase">Resolution Rate</p>
+                  <p className="text-2xl font-bold text-slate-900">{resolutionRate}%</p>
+                </div>
+              </Card.Content>
+            </Card>
 
-        <Card>
-          <Card.Content className="flex items-center">
-            <div className="flex-shrink-0">
-              <TrendingUp className="h-8 w-8 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Resolution Rate</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.resolutionRate}</p>
-              <p className="text-xs text-green-600">+3% from last period</p>
-            </div>
-          </Card.Content>
-        </Card>
+            <Card>
+              <Card.Content className="flex items-center p-5">
+                <div className="p-3 bg-emerald-500 text-white rounded-xl">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-xs font-semibold text-slate-500 uppercase">Categories Tracked</p>
+                  <p className="text-2xl font-bold text-slate-900">{categoryData.length}</p>
+                </div>
+              </Card.Content>
+            </Card>
 
-        <Card>
-          <Card.Content className="flex items-center">
-            <div className="flex-shrink-0">
-              <Users className="h-8 w-8 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Active Reports</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.activeReports}</p>
-              <p className="text-xs text-red-600">Needs attention</p>
-            </div>
-          </Card.Content>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Reports Over Time */}
-        <Card>
-          <Card.Header>
-            <h2 className="text-xl font-semibold text-gray-900">Reports Over Time</h2>
-          </Card.Header>
-          <Card.Content>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={reportsOverTimeData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Area type="monotone" dataKey="reports" stackId="1" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.6} />
-                <Area type="monotone" dataKey="resolved" stackId="2" stroke="#10B981" fill="#10B981" fillOpacity={0.6} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </Card.Content>
-        </Card>
-
-        {/* Response Time Trend */}
-        <Card>
-          <Card.Header>
-            <h2 className="text-xl font-semibold text-gray-900">Average Response Time</h2>
-          </Card.Header>
-          <Card.Content>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={responseTimeData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip formatter={(value) => [`${value} days`, 'Avg Response Time']} />
-                <Line type="monotone" dataKey="avgDays" stroke="#EF4444" strokeWidth={3} />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card.Content>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        {/* Category Distribution */}
-        <Card>
-          <Card.Header>
-            <h2 className="text-xl font-semibold text-gray-900">Reports by Category</h2>
-          </Card.Header>
-          <Card.Content>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </Card.Content>
-        </Card>
-
-        {/* Status Distribution */}
-        <Card>
-          <Card.Header>
-            <h2 className="text-xl font-semibold text-gray-900">Status Distribution</h2>
-          </Card.Header>
-          <Card.Content>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={statusData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                >
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </Card.Content>
-        </Card>
-
-        {/* Department Workload */}
-        <Card>
-          <Card.Header>
-            <h2 className="text-xl font-semibold text-gray-900">Department Workload</h2>
-          </Card.Header>
-          <Card.Content>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={departmentData} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="department" type="category" width={100} />
-                <Tooltip />
-                <Bar dataKey="reports" fill="#3B82F6" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card.Content>
-        </Card>
-      </div>
-
-      {/* Performance Insights */}
-      <Card>
-        <Card.Header>
-          <h2 className="text-xl font-semibold text-gray-900">Performance Insights</h2>
-        </Card.Header>
-        <Card.Content>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-blue-900 mb-2">Most Common Issues</h3>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Infrastructure problems (40%)</li>
-                <li>• Road maintenance (25%)</li>
-                <li>• Sanitation issues (20%)</li>
-              </ul>
-            </div>
-            
-            <div className="bg-green-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-green-900 mb-2">Best Performing Dept</h3>
-              <ul className="text-sm text-green-800 space-y-1">
-                <li>• Parks & Recreation</li>
-                <li>• 95% resolution rate</li>
-                <li>• 1.8 days avg response</li>
-              </ul>
-            </div>
-            
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-yellow-900 mb-2">Areas for Improvement</h3>
-              <ul className="text-sm text-yellow-800 space-y-1">
-                <li>• High priority response time</li>
-                <li>• Weekend coverage</li>
-                <li>• Citizen communication</li>
-              </ul>
-            </div>
+            <Card>
+              <Card.Content className="flex items-center p-5">
+                <div className="p-3 bg-purple-500 text-white rounded-xl">
+                  <Users className="h-6 w-6" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-xs font-semibold text-slate-500 uppercase">Active Queries</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {statusData.find((s) => s.name === 'Pending')?.value || 0}
+                  </p>
+                </div>
+              </Card.Content>
+            </Card>
           </div>
-        </Card.Content>
-      </Card>
+
+          {/* Charts Row 1 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <Card>
+              <Card.Header>
+                <h2 className="text-base font-bold text-slate-900">Report Submission Trend</h2>
+              </Card.Header>
+              <Card.Content>
+                <ResponsiveContainer width="100%" height={260}>
+                  <AreaChart data={recentReportsTrend}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" style={{ fontSize: '11px' }} />
+                    <YAxis style={{ fontSize: '11px' }} />
+                    <Tooltip />
+                    <Area type="monotone" dataKey="count" stroke="#0284c7" fill="#0284c7" fillOpacity={0.4} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </Card.Content>
+            </Card>
+
+            <Card>
+              <Card.Header>
+                <h2 className="text-base font-bold text-slate-900">Report Status Distribution</h2>
+              </Card.Header>
+              <Card.Content>
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={statusData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={75}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {statusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Card.Content>
+            </Card>
+          </div>
+
+          {/* Charts Row 2 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card>
+              <Card.Header>
+                <h2 className="text-base font-bold text-slate-900">Volume by Category</h2>
+              </Card.Header>
+              <Card.Content>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={categoryData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" style={{ fontSize: '11px' }} />
+                    <YAxis style={{ fontSize: '11px' }} />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#0284c7" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card.Content>
+            </Card>
+
+            <Card>
+              <Card.Header>
+                <h2 className="text-base font-bold text-slate-900">System Insights & Recommendations</h2>
+              </Card.Header>
+              <Card.Content>
+                <div className="space-y-3 text-xs">
+                  <div className="p-3 bg-sky-50 rounded-lg text-sky-800 border border-sky-100">
+                    <span className="font-bold block mb-1">Sanitation & Waste Disposal</span>
+                    Sanitation categories represent the highest volume of community reports. Automated routing is suggested.
+                  </div>
+                  <div className="p-3 bg-amber-50 rounded-lg text-amber-800 border border-amber-100">
+                    <span className="font-bold block mb-1">Response Acceleration</span>
+                    High priority issues pending over 48 hours trigger administrative warnings.
+                  </div>
+                </div>
+              </Card.Content>
+            </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 };

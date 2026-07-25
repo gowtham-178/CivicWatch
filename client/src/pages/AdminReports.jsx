@@ -2,19 +2,10 @@ import React, { useState, useEffect } from 'react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
-import { 
-  Search, 
-  Filter, 
-  Eye, 
-  Edit, 
-  Clock, 
-  CheckCircle, 
-  AlertCircle,
-  User,
-  MapPin,
-  Calendar
-} from 'lucide-react';
-import { API_BASE_URL, API_SERVER_URL } from '../config';
+import { StatusBadge, PriorityBadge } from '../components/common/StatusBadge';
+import { reportsAPI } from '../services/api';
+import { Search, Filter, Eye, MapPin, Calendar, User, Tag } from 'lucide-react';
+import { API_SERVER_URL } from '../config';
 
 const AdminReports = () => {
   const [reports, setReports] = useState([]);
@@ -33,14 +24,17 @@ const AdminReports = () => {
 
   const fetchReports = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/reports`);
-      const data = await response.json();
-      if (data.success) {
-        setReports(data.data.docs || []);
-        setFilteredReports(data.data.docs || []);
+      setLoading(true);
+      const res = await reportsAPI.getAll('limit=1000');
+      if (res.success) {
+        const list = Array.isArray(res.data) ? res.data : (res.data?.docs || []);
+        setReports(list);
+        setFilteredReports(list);
       }
-    } catch (error) {
-      console.error('Error fetching reports:', error);
+    } catch (err) {
+      console.error('Error fetching reports:', err);
+      setReports([]);
+      setFilteredReports([]);
     } finally {
       setLoading(false);
     }
@@ -50,23 +44,26 @@ const AdminReports = () => {
     let filtered = reports;
 
     if (searchTerm) {
-      filtered = filtered.filter(report =>
-        report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        report.location.address.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(
+        (r) =>
+          r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          r.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          r.location?.address.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(report => report.status === statusFilter);
+      filtered = filtered.filter((r) => r.status === statusFilter);
     }
 
     if (categoryFilter !== 'all') {
-      filtered = filtered.filter(report => report.category === categoryFilter);
+      filtered = filtered.filter((r) =>
+        Array.isArray(r.category) ? r.category.includes(categoryFilter) : r.category === categoryFilter
+      );
     }
 
     if (priorityFilter !== 'all') {
-      filtered = filtered.filter(report => report.priority === priorityFilter);
+      filtered = filtered.filter((r) => r.priority === priorityFilter);
     }
 
     setFilteredReports(filtered);
@@ -74,270 +71,171 @@ const AdminReports = () => {
 
   const handleStatusUpdate = async (reportId, newStatus) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/reports/${reportId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('civicwatch_token')}`
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-      
-      if (response.ok) {
-        setReports(prev => prev.map(report =>
-          report._id === reportId
-            ? { ...report, status: newStatus, updatedAt: new Date().toISOString() }
-            : report
-        ));
-      } else {
-        console.error('Failed to update status');
+      const res = await reportsAPI.update(reportId, { status: newStatus });
+      if (res.success) {
+        setReports((prev) =>
+          prev.map((r) => (r._id === reportId ? { ...r, status: newStatus, updatedAt: new Date().toISOString() } : r))
+        );
       }
-    } catch (error) {
-      console.error('Error updating status:', error);
+    } catch (err) {
+      console.error('Error updating report status:', err);
+      alert(`Failed to update status: ${err.message}`);
     }
   };
 
-  const handleDepartmentAssign = async (reportId, department) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/reports/${reportId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('civicwatch_token')}`
-        },
-        body: JSON.stringify({ assignedDepartment: department })
-      });
-      
-      if (response.ok) {
-        setReports(prev => prev.map(report =>
-          report._id === reportId
-            ? { ...report, assignedTo: { name: department }, updatedAt: new Date().toISOString() }
-            : report
-        ));
-      } else {
-        console.error('Failed to assign department');
-      }
-    } catch (error) {
-      console.error('Error assigning department:', error);
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'Resolved':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'In Progress':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      default:
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Resolved':
-        return 'bg-green-100 text-green-800';
-      case 'In Progress':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-red-100 text-red-800';
-    }
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'High':
-        return 'bg-red-100 text-red-800';
-      case 'Medium':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-green-100 text-green-800';
-    }
-  };
-
-  const categories = [...new Set(reports.map(r => r.category))];
-  const departments = ['Public Works', 'Sanitation', 'Parks & Recreation', 'Transportation', 'Utilities'];
+  const categories = [...new Set(reports.flatMap((r) => (Array.isArray(r.category) ? r.category : [r.category])).filter(Boolean))];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">All Reports</h1>
-        <p className="text-gray-600">Manage and track all community issue reports</p>
+        <h1 className="text-3xl font-extrabold text-slate-900 mb-1">Reports Management</h1>
+        <p className="text-sm text-slate-600">Review, categorize, and update community reports</p>
       </div>
 
-      {/* Filters */}
+      {/* Filter Bar */}
       <Card className="mb-6">
-        <Card.Content>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Search */}
+        <Card.Content className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div className="relative">
-              <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search reports..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-sky-500"
               />
             </div>
 
-            {/* Status Filter */}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-sky-500"
             >
-              <option value="all">All Status</option>
+              <option value="all">All Statuses</option>
               <option value="Pending">Pending</option>
               <option value="In Progress">In Progress</option>
               <option value="Resolved">Resolved</option>
+              <option value="Rejected">Rejected</option>
             </select>
 
-            {/* Category Filter */}
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-sky-500"
             >
               <option value="all">All Categories</option>
-              {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
 
-            {/* Priority Filter */}
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-sky-500"
             >
               <option value="all">All Priorities</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
               <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Critical">Critical</option>
             </select>
 
-            {/* Clear Filters */}
             <Button
-              variant="secondary"
+              variant="outline"
+              size="sm"
               onClick={() => {
                 setSearchTerm('');
                 setStatusFilter('all');
                 setCategoryFilter('all');
                 setPriorityFilter('all');
               }}
-              className="inline-flex items-center space-x-2"
+              className="inline-flex items-center space-x-1 justify-center text-xs"
             >
-              <Filter className="h-4 w-4" />
-              <span>Clear</span>
+              <Filter className="h-3.5 w-3.5" />
+              <span>Reset</span>
             </Button>
           </div>
         </Card.Content>
       </Card>
 
-      {/* Results Count */}
-      <div className="mb-4">
-        <p className="text-sm text-gray-600">
-          Showing {filteredReports.length} of {reports.length} reports
-        </p>
+      <div className="mb-3 text-xs text-slate-500">
+        Showing {filteredReports.length} of {reports.length} total reports
       </div>
 
       {/* Reports Table */}
       <Card>
         <Card.Content className="p-0">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-slate-200 text-xs">
+              <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Report
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Priority
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Department
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Submitted
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Issue Title & Location</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Category</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Status Update</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Priority</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Submitted By</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Date</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Action</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-slate-100">
                 {filteredReports.map((report) => (
-                  <tr key={report._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        {getStatusIcon(report.status)}
-                        <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900">{report.title}</div>
-                          <div className="text-sm text-gray-500 flex items-center">
-                            <MapPin className="h-3 w-3 mr-1" />
-                            {report.location.address}
-                          </div>
-                          <div className="text-sm text-gray-500">{report.category}</div>
-                        </div>
+                  <tr key={report._id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <div className="font-semibold text-slate-900">{report.title}</div>
+                      <div className="text-slate-500 flex items-center gap-1 mt-0.5">
+                        <MapPin className="h-3 w-3 text-slate-400" />
+                        <span className="truncate max-w-[200px]">{report.location?.address}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200/80">
+                        <Tag className="h-3 w-3 mr-1 text-sky-500" />
+                        {Array.isArray(report.category) ? report.category.join(', ') : (report.category || 'General')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
                       <select
                         value={report.status}
                         onChange={(e) => handleStatusUpdate(report._id, e.target.value)}
-                        className={`px-2 py-1 text-xs font-medium rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 ${getStatusColor(report.status)}`}
+                        className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-sky-500"
                       >
                         <option value="Pending">Pending</option>
                         <option value="In Progress">In Progress</option>
                         <option value="Resolved">Resolved</option>
+                        <option value="Rejected">Rejected</option>
                       </select>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(report.priority)}`}>
-                        {report.priority}
-                      </span>
+                    <td className="px-4 py-3">
+                      <PriorityBadge priority={report.priority} />
                     </td>
-                    <td className="px-6 py-4">
-                      <select
-                        value={report.assignedTo?.name || 'Unassigned'}
-                        onChange={(e) => handleDepartmentAssign(report._id, e.target.value)}
-                        className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    <td className="px-4 py-3 text-slate-700">
+                      <div className="flex items-center gap-1">
+                        <User className="h-3 w-3 text-slate-400" />
+                        <span>{report.submittedBy?.name || 'Citizen'}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3 text-slate-400" />
+                        <span>{new Date(report.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedReport(report);
+                          setIsModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1 text-xs"
                       >
-                        <option value="Unassigned">Unassigned</option>
-                        {departments.map(dept => (
-                          <option key={dept} value={dept}>{dept}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      <div className="flex items-center">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {new Date(report.createdAt).toLocaleDateString()}
-                      </div>
-                      <div className="flex items-center text-xs">
-                        <User className="h-3 w-3 mr-1" />
-                        {report.submittedBy?.name || 'Unknown'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => {
-                            setSelectedReport(report);
-                            setIsModalOpen(true);
-                          }}
-                          className="inline-flex items-center"
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          View
-                        </Button>
-                      </div>
+                        <Eye className="h-3 w-3" />
+                        <span>View</span>
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -347,91 +245,53 @@ const AdminReports = () => {
         </Card.Content>
       </Card>
 
-      {/* Report Detail Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Report Details"
-        size="lg"
-      >
+      {/* Modal */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Report Details" size="lg">
         {selectedReport && (
-          <div className="space-y-4">
+          <div className="space-y-4 text-xs">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Title</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedReport.title}</p>
+                <label className="font-semibold text-slate-700">Title</label>
+                <p className="text-slate-900 font-medium">{selectedReport.title}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Status</label>
-                <span className={`mt-1 inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(selectedReport.status)}`}>
-                  {selectedReport.status}
-                </span>
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Description</label>
-              <p className="mt-1 text-sm text-gray-900">{selectedReport.description}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Category</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedReport.category}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Priority</label>
-                <span className={`mt-1 inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(selectedReport.priority)}`}>
-                  {selectedReport.priority}
-                </span>
+                <label className="font-semibold text-slate-700">Current Status</label>
+                <div><StatusBadge status={selectedReport.status} /></div>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Location</label>
-              <p className="mt-1 text-sm text-gray-900">{selectedReport.location.address}</p>
+              <label className="font-semibold text-slate-700">Description</label>
+              <p className="text-slate-700 mt-1">{selectedReport.description}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="font-semibold text-slate-700">Category</label>
+                <p className="text-slate-900">{Array.isArray(selectedReport.category) ? selectedReport.category.join(', ') : selectedReport.category}</p>
+              </div>
+              <div>
+                <label className="font-semibold text-slate-700">Priority</label>
+                <div><PriorityBadge priority={selectedReport.priority} /></div>
+              </div>
+            </div>
+
+            <div>
+              <label className="font-semibold text-slate-700">Location Address</label>
+              <p className="text-slate-900">{selectedReport.location?.address}</p>
             </div>
 
             {selectedReport.images && selectedReport.images.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Attached Images</label>
-                <div className="grid grid-cols-2 gap-4">
-                  {selectedReport.images.map((image, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={`${API_SERVER_URL}${image}`}
-                        alt={`Report image ${index + 1}`}
-                        className="w-full h-32 object-cover rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => window.open(`${API_SERVER_URL}${image}`, '_blank')}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-500 mt-2">Click images to view full size</p>
+                <label className="font-semibold text-slate-700 mb-2 block">Attachment</label>
+                <img
+                  src={`${API_SERVER_URL}${selectedReport.images[0]}`}
+                  alt="Attachment"
+                  className="w-full max-h-48 object-cover rounded-lg border border-slate-200 cursor-pointer"
+                  onClick={() => window.open(`${API_SERVER_URL}${selectedReport.images[0]}`, '_blank')}
+                />
               </div>
             )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Submitted By</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedReport.submittedBy?.name || 'Unknown'}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Assigned To</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedReport.assignedTo?.name || 'Unassigned'}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Submitted</label>
-                <p className="mt-1 text-sm text-gray-900">{new Date(selectedReport.createdAt).toLocaleString()}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Last Updated</label>
-                <p className="mt-1 text-sm text-gray-900">{new Date(selectedReport.updatedAt).toLocaleString()}</p>
-              </div>
-            </div>
           </div>
         )}
       </Modal>

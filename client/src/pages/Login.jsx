@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { MapPin, Eye, EyeOff, User, Shield } from 'lucide-react';
+import { MapPin, Eye, EyeOff, ShieldAlert, ArrowRight } from 'lucide-react';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -12,13 +12,18 @@ const Login = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [unverifiedState, setUnverifiedState] = useState(null);
   const [loading, setLoading] = useState(false);
   
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   
-  const from = location.state?.from?.pathname || '/';
+  React.useEffect(() => {
+    if (user) {
+      const redirectPath = user?.role === 'admin' ? '/admin' : '/';
+      navigate(redirectPath, { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -27,76 +32,102 @@ const Login = () => {
       [name]: value
     }));
     setError('');
+    setUnverifiedState(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setUnverifiedState(null);
 
     const result = await login(formData.email, formData.password);
     
     if (result.success) {
-      // Redirect based on user role
-      const redirectPath = result.user.role === 'admin' ? '/admin' : '/';
+      const redirectPath = result.user?.role === 'admin' ? '/admin' : '/';
       navigate(redirectPath, { replace: true });
     } else {
       setError(result.error);
+      if (result.requiresOtp) {
+        setUnverifiedState({
+          email: result.email || formData.email
+        });
+      }
     }
     
     setLoading(false);
   };
 
-
-
+  const handleVerifyNow = () => {
+    navigate('/register', {
+      state: {
+        step: 'otp',
+        email: unverifiedState?.email || formData.email
+      }
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <div className="min-h-screen relative overflow-hidden flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      {/* Background Glass Orbs */}
+      <div className="absolute top-1/4 right-10 w-72 h-72 bg-sky-400/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 left-10 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="flex justify-center">
-          <div className="p-4 bg-gradient-to-br from-primary-500 to-secondary-600 rounded-2xl shadow-large">
+          <div className="p-4 bg-gradient-to-br from-sky-500 to-indigo-600 rounded-2xl shadow-lg shadow-sky-500/30">
             <MapPin className="h-10 w-10 text-white" />
           </div>
         </div>
-        <h2 className="mt-8 text-center text-4xl font-bold bg-gradient-to-r from-neutral-900 to-primary-800 bg-clip-text text-transparent">
-          Sign in to Civic Watch
+        <h2 className="mt-6 text-center text-3xl font-bold text-neutral-900 tracking-tight">
+          Sign in to CivicWatch
         </h2>
-        <p className="mt-3 text-center text-lg text-neutral-600">
-          Help improve your community
+        <p className="mt-2 text-center text-sm text-neutral-600">
+          Empowering communities through transparent issue reporting
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <Card className="shadow-large">
-          <Card.Content className="py-10 px-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        <Card className="glass-card shadow-2xl border border-white/60">
+          <Card.Content className="py-8 px-8">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm animate-slide-up">
-                  {error}
+                <div className="bg-red-50/90 backdrop-blur-sm border border-red-200 text-red-600 px-4 py-3.5 rounded-xl text-sm animate-slide-up">
+                  <p>{error}</p>
+                  {unverifiedState && (
+                    <button
+                      type="button"
+                      onClick={handleVerifyNow}
+                      className="mt-2.5 inline-flex items-center space-x-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+                    >
+                      <span>Verify OTP Code Now</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               )}
 
               <div>
-                <label htmlFor="email" className="block text-sm font-semibold text-neutral-700 mb-2">
-                  Email address
+                <label htmlFor="email" className="block text-sm font-medium text-neutral-700 mb-1.5">
+                  Email Address / Mobile
                 </label>
                 <input
                   id="email"
                   name="email"
-                  type="email"
+                  type="text"
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300"
-                  placeholder="Enter your email"
+                  className="block w-full px-4 py-3 glass-input rounded-xl text-neutral-800 placeholder-neutral-400 focus:outline-none"
+                  placeholder="Enter email or mobile number"
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-semibold text-neutral-700 mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-1.5">
                   Password
                 </label>
-                <div className="mt-1 relative">
+                <div className="relative">
                   <input
                     id="password"
                     name="password"
@@ -104,18 +135,18 @@ const Login = () => {
                     required
                     value={formData.password}
                     onChange={handleInputChange}
-                    className="block w-full px-4 py-3 pr-12 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300"
+                    className="block w-full px-4 py-3 pr-12 glass-input rounded-xl text-neutral-800 placeholder-neutral-400 focus:outline-none"
                     placeholder="Enter your password"
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-neutral-400 hover:text-neutral-600"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-neutral-400" />
+                      <EyeOff className="h-5 w-5" />
                     ) : (
-                      <Eye className="h-5 w-5 text-neutral-400" />
+                      <Eye className="h-5 w-5" />
                     )}
                   </button>
                 </div>
@@ -123,31 +154,23 @@ const Login = () => {
 
               <Button
                 type="submit"
-                className="w-full text-lg py-3"
+                className="w-full text-base font-semibold py-3.5 btn-gradient rounded-xl shadow-lg shadow-sky-500/25"
                 disabled={loading}
               >
                 {loading ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
 
-
-
-
-
-            <div className="mt-6">
-              <div className="text-center">
-                <span className="text-sm text-neutral-600">
-                  Don't have an account?{' '}
-                  <Link to="/register" className="font-semibold text-primary-600 hover:text-primary-500 transition-colors">
-                    Sign up
-                  </Link>
-                </span>
-              </div>
+            <div className="mt-6 pt-4 border-t border-white/40 text-center">
+              <span className="text-sm text-neutral-600">
+                Don't have an account?{' '}
+                <Link to="/register" className="font-semibold text-sky-600 hover:text-sky-700 transition-colors">
+                  Sign up
+                </Link>
+              </span>
             </div>
           </Card.Content>
         </Card>
-
-
       </div>
     </div>
   );

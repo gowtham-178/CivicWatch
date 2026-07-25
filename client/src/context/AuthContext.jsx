@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authAPI } from '../services/api';
 import { API_BASE_URL } from '../config';
 
 const AuthContext = createContext();
@@ -17,111 +18,117 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('civicwatch_token');
-    const savedUser = localStorage.getItem('civicwatch_user');
-    
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    const initializeAuth = async () => {
+      const savedToken = localStorage.getItem('civicwatch_token') || localStorage.getItem('token');
+      const savedUser = localStorage.getItem('civicwatch_user');
+
+      if (savedToken) {
+        setToken(savedToken);
+        if (savedUser) {
+          try {
+            setUser(JSON.parse(savedUser));
+          } catch (err) {
+            console.error('Failed to parse saved user credentials', err);
+          }
+        }
+        try {
+          const res = await authAPI.getProfile();
+          if (res && res.success && res.data) {
+            setUser(res.data);
+            localStorage.setItem('civicwatch_user', JSON.stringify(res.data));
+          }
+        } catch (err) {
+          console.error('Failed to sync user profile:', err);
+        }
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
+
+  const saveSession = (newToken, newUser) => {
+    setToken(newToken);
+    setUser(newUser);
+    localStorage.setItem('civicwatch_token', newToken);
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('civicwatch_user', JSON.stringify(newUser));
+  };
+
+  const clearSession = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('civicwatch_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('civicwatch_user');
+  };
 
   const login = async (email, password) => {
     try {
-      // Try admin login first
-      const adminResponse = await fetch(`${API_BASE_URL}/admin-auth/login`, {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username: email, password }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
       });
-
-      const adminData = await adminResponse.json();
-
-      if (adminData.success) {
-        setUser(adminData.admin);
-        setToken(adminData.token);
-        localStorage.setItem('civicwatch_user', JSON.stringify(adminData.admin));
-        localStorage.setItem('civicwatch_token', adminData.token);
-        return { success: true, user: adminData.admin };
-      }
-      
-      // Try regular user login
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
+      const data = await res.json();
       if (data.success) {
-        setUser(data.user);
-        setToken(data.token);
-        localStorage.setItem('civicwatch_user', JSON.stringify(data.user));
-        localStorage.setItem('civicwatch_token', data.token);
-        return { success: true, user: data.user };
-      } else {
-        return { success: false, error: data.error };
+        const payload = data.data || data;
+        const token = payload.token || data.token;
+        const userObj = payload.user || payload.admin || data.user || data.admin || { role: 'user' };
+        saveSession(token, userObj);
+        return { success: true, user: userObj };
       }
+      return {
+        success: false,
+        error: data.error || 'Login failed',
+        requiresOtp: data.requiresOtp,
+        email: data.email || email
+      };
     } catch (error) {
       console.error('Login error:', error);
-      return { success: false, error: 'Network error. Please try again.' };
+      return { success: false, error: error.message || 'Network error. Please try again.' };
     }
   };
 
   const register = async (userData) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
-
-      const data = await response.json();
-
+      const data = await authAPI.register(userData);
       if (data.success) {
-        setUser(data.user);
-        setToken(data.token);
-        localStorage.setItem('civicwatch_user', JSON.stringify(data.user));
-        localStorage.setItem('civicwatch_token', data.token);
-        return { success: true, user: data.user };
-      } else {
-        return { success: false, error: data.error };
+        const payload = data.data || data;
+        const token = payload.token || data.token;
+        const userObj = payload.user || data.user;
+        if (token && userObj) {
+          saveSession(token, userObj);
+        }
+        return { success: true, user: userObj, data };
       }
+      return { success: false, error: data.error || 'Registration failed' };
     } catch (error) {
-      console.error('Register error:', error);
-      return { success: false, error: 'Network error. Please try again.' };
+      console.error('Registration error:', error);
+      return { success: false, error: error.message || 'Network error. Please try again.' };
     }
   };
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('civicwatch_user');
-    localStorage.removeItem('civicwatch_token');
+    clearSession();
   };
 
-  const isAdmin = () => {
-    return user?.role === 'admin';
+  const loginWithToken = (newToken, newUser) => {
+    saveSession(newToken, newUser);
   };
 
-  const isUser = () => {
-    return user?.role === 'user';
+  const updateUser = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem('civicwatch_user', JSON.stringify(updatedUser));
   };
 
-  const getAuthHeaders = () => {
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    };
-  };
+  const isAdmin = () => user?.role === 'admin';
+  const isUser = () => user?.role === 'user';
+
+  const getAuthHeaders = () => ({
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  });
 
   const value = {
     user,
@@ -132,7 +139,9 @@ export const AuthProvider = ({ children }) => {
     isAdmin,
     isUser,
     loading,
-    getAuthHeaders
+    getAuthHeaders,
+    updateUser,
+    loginWithToken
   };
 
   return (

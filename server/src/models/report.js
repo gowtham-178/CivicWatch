@@ -22,8 +22,8 @@ const reportSchema = new mongoose.Schema(
       }
     },
     category: {
-      type: String,
-      required: true
+      type: [String],
+      default: ['General']
     },
     status: {
       type: String,

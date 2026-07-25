@@ -1,46 +1,169 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Upload, Camera, FileCheck } from 'lucide-react';
+import { MapPin, Upload, Camera, FileCheck, Locate } from 'lucide-react';
 import Card from '../components/Card';
 import SuccessModal from '../components/SuccessModal';
-import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL } from '../config';
+import { reportsAPI } from '../services/api';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+const markerIcon = L.divIcon({
+  html: `<div class="w-8 h-8 rounded-full bg-sky-600 flex items-center justify-center shadow-md border-2 border-white">
+           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+         </div>`,
+  className: 'custom-div-icon',
+  iconSize: [32, 32],
+  iconAnchor: [16, 16]
+});
 
 const ReportForm = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [categories, setCategories] = useState([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: '',
     location: '',
+    category: ['General'],
     priority: 'Medium',
     image: null
   });
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
+  const [selectedCoords, setSelectedCoords] = useState(null);
+  const [resolvingAddress, setResolvingAddress] = useState(false);
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
 
-  const fetchCategories = async () => {
+  const reverseGeocode = async (lat, lng) => {
+    setResolvingAddress(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/categories`);
-      const data = await response.json();
-      if (data.success) {
-        setCategories(data.data);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.display_name) {
+          setFormData((prev) => ({
+            ...prev,
+            location: data.display_name
+          }));
+        }
       }
-    } catch (error) {
-      console.error('Error fetching categories:', error);
+    } catch (err) {
+      console.error('Error reverse geocoding:', err);
+    } finally {
+      setResolvingAddress(false);
     }
   };
 
+  const safeSetView = (map, coords, zoom) => {
+    if (map && map._container && map._mapPane) {
+      try {
+        map.setView(coords, zoom);
+      } catch (e) {
+        console.warn('Map setView skipped safely:', e);
+      }
+    }
+  };
+
+  const handleRealign = () => {
+    const map = mapRef.current;
+    if (!map || !map._container || !map._mapPane) return;
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (mapRef.current !== map || !map._container) return;
+          const { latitude, longitude } = position.coords;
+          safeSetView(map, [latitude, longitude], 15);
+          setSelectedCoords({ lat: latitude, lng: longitude });
+
+          if (markerRef.current) {
+            markerRef.current.setLatLng([latitude, longitude]);
+          } else {
+            markerRef.current = L.marker([latitude, longitude], { icon: markerIcon }).addTo(map);
+          }
+          reverseGeocode(latitude, longitude);
+        },
+        () => {
+          if (mapRef.current !== map || !map._container) return;
+          safeSetView(map, [16.4879, 80.6935], 15);
+          setSelectedCoords({ lat: 16.4879, lng: 80.6935 });
+          if (markerRef.current) {
+            markerRef.current.setLatLng([16.4879, 80.6935]);
+          } else {
+            markerRef.current = L.marker([16.4879, 80.6935], { icon: markerIcon }).addTo(map);
+          }
+          reverseGeocode(16.4879, 80.6935);
+        }
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    const map = L.map(mapContainerRef.current, { zoomControl: false });
+    safeSetView(map, [16.4879, 80.6935], 13);
+    mapRef.current = map;
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 20
+    }).addTo(map);
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (mapRef.current !== map || !map._container) return;
+          const { latitude, longitude } = position.coords;
+          safeSetView(map, [latitude, longitude], 15);
+          setSelectedCoords({ lat: latitude, lng: longitude });
+          markerRef.current = L.marker([latitude, longitude], { icon: markerIcon }).addTo(map);
+          reverseGeocode(latitude, longitude);
+        },
+        () => {
+          if (mapRef.current !== map || !map._container) return;
+          safeSetView(map, [16.4879, 80.6935], 15);
+          setSelectedCoords({ lat: 16.4879, lng: 80.6935 });
+          markerRef.current = L.marker([16.4879, 80.6935], { icon: markerIcon }).addTo(map);
+          reverseGeocode(16.4879, 80.6935);
+        }
+      );
+    }
+
+    map.on('click', (e) => {
+      if (!mapRef.current || !map._container) return;
+      const { lat, lng } = e.latlng;
+      setSelectedCoords({ lat, lng });
+
+      if (markerRef.current) {
+        markerRef.current.setLatLng([lat, lng]);
+      } else {
+        markerRef.current = L.marker([lat, lng], { icon: markerIcon }).addTo(map);
+      }
+      reverseGeocode(lat, lng);
+    });
+
+    return () => {
+      if (mapRef.current) {
+        try {
+          mapRef.current.off();
+          mapRef.current.remove();
+        } catch (e) {}
+        mapRef.current = null;
+      }
+    };
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value
     }));
@@ -48,7 +171,7 @@ const ReportForm = () => {
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       image: file
     }));
@@ -63,59 +186,55 @@ const ReportForm = () => {
       const formDataToSend = new FormData();
       formDataToSend.append('title', formData.title);
       formDataToSend.append('description', formData.description);
-      formDataToSend.append('category', formData.category);
+      formDataToSend.append('category', JSON.stringify(formData.category || ['General']));
       formDataToSend.append('location', formData.location);
       formDataToSend.append('priority', formData.priority);
-      
+
+      if (selectedCoords) {
+        formDataToSend.append('latitude', selectedCoords.lat);
+        formDataToSend.append('longitude', selectedCoords.lng);
+      }
+
       if (formData.image) {
         formDataToSend.append('image', formData.image);
       }
 
-      const response = await fetch(`${API_BASE_URL}/reports`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${user?.token || localStorage.getItem('civicwatch_token')}`
-        },
-        body: formDataToSend
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
+      const res = await reportsAPI.create(formDataToSend);
+      if (res.success) {
         setShowSuccessModal(true);
       } else {
-        setError(data.error || 'Failed to submit report');
+        setError(res.error || 'Failed to submit report');
       }
-    } catch (error) {
-      console.error('Error submitting report:', error);
-      setError('Network error. Please try again.');
+    } catch (err) {
+      console.error('Error submitting report:', err);
+      if (err.message && (err.message.includes('token') || err.message.includes('authorization') || err.message.includes('401'))) {
+        setError('Your session token has expired or is invalid. Please sign out and sign in again to submit your report.');
+      } else {
+        setError(err.message || 'Network error. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
-      <div className="mb-10 text-center">
-        <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-primary-100 to-secondary-100 rounded-full text-sm font-medium text-primary-700 mb-4">
-          <span className="w-2 h-2 bg-accent-500 rounded-full mr-2 animate-bounce-subtle"></span>
-          Community Reporting
-        </div>
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-neutral-900 via-primary-800 to-secondary-800 bg-clip-text text-transparent mb-4">Report an Issue</h1>
-        <p className="text-lg text-neutral-600 max-w-xl mx-auto">Help improve your community by reporting issues that need attention.</p>
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-extrabold text-slate-900 mb-2">Report a Civic Issue</h1>
+        <p className="text-sm text-slate-600 max-w-md mx-auto">Fill in the details below to notify administrators and your local community.</p>
       </div>
 
-      <Card className="shadow-large" hover>
-        <Card.Content className="py-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+      <Card>
+        <Card.Content className="py-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                 {error}
               </div>
             )}
 
             <div>
-              <label htmlFor="title" className="block text-sm font-semibold text-neutral-700 mb-2">
+              <label htmlFor="title" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
                 Issue Title *
               </label>
               <input
@@ -125,33 +244,14 @@ const ReportForm = () => {
                 required
                 value={formData.title}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300"
-                placeholder="Brief description of the issue"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                placeholder="e.g. Overflowing waste bin near main market"
               />
             </div>
 
             <div>
-              <label htmlFor="category" className="block text-sm font-semibold text-neutral-700 mb-2">
-                Category *
-              </label>
-              <select
-                id="category"
-                name="category"
-                required
-                value={formData.category}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300"
-              >
-                <option value="">Select a category</option>
-                {categories.map(category => (
-                  <option key={category._id} value={category.name}>{category.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="description" className="block text-sm font-semibold text-neutral-700 mb-2">
-                Description *
+              <label htmlFor="description" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                Detailed Description *
               </label>
               <textarea
                 id="description"
@@ -160,14 +260,36 @@ const ReportForm = () => {
                 rows={4}
                 value={formData.description}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300 resize-none"
-                placeholder="Provide detailed information about the issue"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none"
+                placeholder="Describe the issue, hazards, or specific location details..."
               />
             </div>
 
             <div>
-              <label htmlFor="location" className="block text-sm font-semibold text-neutral-700 mb-2">
-                Location *
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                Pin Location on Map *
+              </label>
+              <div className="relative bg-slate-100 rounded-lg overflow-hidden border border-slate-200 mb-3" style={{ height: '260px' }}>
+                <div ref={mapContainerRef} className="w-full h-full z-0" />
+                <button
+                  type="button"
+                  onClick={handleRealign}
+                  className="absolute top-3 right-3 z-[1000] bg-white p-2 rounded-lg shadow border border-slate-200 hover:bg-slate-50 transition-colors"
+                  title="Realign to current position"
+                >
+                  <Locate className="h-4 w-4 text-slate-600" />
+                </button>
+                {resolvingAddress && (
+                  <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-[1000]">
+                    <span className="text-xs font-medium text-slate-700 bg-white px-3 py-1.5 rounded-full shadow">
+                      Resolving address...
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <label htmlFor="location" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                Address / Landmark *
               </label>
               <div className="relative">
                 <input
@@ -177,18 +299,49 @@ const ReportForm = () => {
                   required
                   value={formData.location}
                   onChange={handleInputChange}
-                  className="w-full pl-12 pr-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300"
-                  placeholder="Street address or landmark"
+                  className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  placeholder="Street address or landmark resolved from map"
                 />
-                <MapPin className="absolute left-4 top-3.5 h-5 w-5 text-neutral-400" />
+                <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               </div>
-              <p className="mt-2 text-sm text-neutral-500">
-                Be as specific as possible to help responders locate the issue
-              </p>
             </div>
 
             <div>
-              <label htmlFor="priority" className="block text-sm font-semibold text-neutral-700 mb-2">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                Categories *
+              </label>
+              <div className="grid grid-cols-2 gap-3 p-3 border border-slate-200 rounded-lg bg-slate-50">
+                {['General', 'Electronic Waste', 'Dry Waste', 'Wet Waste', 'Infrastructure'].map((cat) => {
+                  const isChecked = formData.category.includes(cat);
+                  return (
+                    <label key={cat} className="flex items-center space-x-2 cursor-pointer text-xs font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setFormData((prev) => {
+                            let updated = [...prev.category];
+                            if (checked) {
+                              updated.push(cat);
+                            } else {
+                              updated = updated.filter((c) => c !== cat);
+                            }
+                            if (updated.length === 0) updated = ['General'];
+                            return { ...prev, category: updated };
+                          });
+                        }}
+                        className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-slate-300 rounded"
+                      />
+                      <span>{cat}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="priority" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
                 Priority Level
               </label>
               <select
@@ -196,19 +349,20 @@ const ReportForm = () => {
                 name="priority"
                 value={formData.priority}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
               >
                 <option value="Low">Low - Minor inconvenience</option>
                 <option value="Medium">Medium - Moderate impact</option>
                 <option value="High">High - Safety concern or major impact</option>
+                <option value="Critical">Critical - Emergency / Severe hazard</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2">
-                Photo (Optional)
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                Attach Image (Optional)
               </label>
-              <div className="border-2 border-dashed border-neutral-300 rounded-2xl p-8 text-center hover:border-primary-400 hover:bg-primary-50/50 transition-all duration-300">
+              <div className="border-2 border-dashed border-slate-300 rounded-lg p-5 text-center hover:border-sky-400 transition-colors">
                 <input
                   type="file"
                   id="image"
@@ -218,40 +372,34 @@ const ReportForm = () => {
                   className="hidden"
                 />
                 <label htmlFor="image" className="cursor-pointer">
-                  <div className="flex flex-col items-center">
-                    {formData.image ? (
-                      <div className="flex items-center justify-center space-x-3 text-accent-600">
-                        <div className="p-2 bg-accent-100 rounded-xl">
-                          <Camera className="h-5 w-5" />
-                        </div>
-                        <span className="text-sm font-semibold">{formData.image.name}</span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="p-3 bg-primary-100 rounded-xl mb-3">
-                          <Upload className="h-6 w-6 text-primary-600" />
-                        </div>
-                        <p className="text-sm font-semibold text-neutral-700 mb-1">Upload a photo</p>
-                        <p className="text-xs text-neutral-500">PNG, JPG up to 10MB</p>
-                      </>
-                    )}
-                  </div>
+                  {formData.image ? (
+                    <div className="flex items-center justify-center space-x-2 text-sky-600 text-sm font-medium">
+                      <Camera className="h-4 w-4" />
+                      <span>{formData.image.name}</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <Upload className="h-6 w-6 text-slate-400 mb-1" />
+                      <span className="text-xs font-semibold text-slate-700">Click to upload photo</span>
+                      <span className="text-[10px] text-slate-400">PNG, JPG up to 5MB</span>
+                    </div>
+                  )}
                 </label>
               </div>
             </div>
 
-            <div className="flex gap-4 pt-6">
+            <div className="flex gap-3 pt-4">
               <button
                 type="button"
                 onClick={() => navigate(-1)}
-                className="flex-1 px-6 py-3 border border-neutral-300 text-neutral-700 rounded-xl hover:bg-neutral-50 transition-colors duration-300"
+                className="flex-1 py-2.5 border border-slate-300 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-primary-600 to-secondary-600 text-white rounded-xl hover:from-primary-700 hover:to-secondary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                className="flex-1 py-2.5 bg-sky-600 text-white text-sm font-semibold rounded-lg hover:bg-sky-700 disabled:opacity-50 transition-colors"
               >
                 {loading ? 'Submitting...' : 'Submit Report'}
               </button>
@@ -259,12 +407,12 @@ const ReportForm = () => {
           </form>
         </Card.Content>
       </Card>
-      
+
       <SuccessModal
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
         title="Report Submitted Successfully!"
-        message="Thank you for helping improve your community. Your report has been submitted and you will receive updates on its progress."
+        message="Thank you for helping improve your community. Your report has been recorded and submitted for municipal review."
         actionText="View My Reports"
         onAction={() => navigate('/my-reports')}
         icon={FileCheck}

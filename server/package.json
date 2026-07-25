@@ -5,9 +5,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "seed": "node src/seed.js",
-    "add_admin": "node src/seedAdmin.js",
-    "check-admins": "node src/checkAdmins.js"
+    "add_admin": "node createAdmin.js",
+    "check-admins": "node checkAdmins.js"
   },
   "author": "",
   "license": "ISC",
@@ -21,7 +20,8 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.5.3",
     "mongoose-paginate-v2": "^1.7.4",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.7"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

@@ -1,27 +1,31 @@
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose'); 
 const path = require('path');
 const fs = require('fs');
 const cookieParser = require('cookie-parser');
-const { auth, adminRequired } = require('./middleware/middleware');
+const dotenv = require('dotenv');
+
+dotenv.config();
+
+const connectDB = require('./config/db');
+const { globalErrorHandler } = require('./middleware/errorHandler');
+
 const authRoutes = require('./routes/auth');
 const reportRoutes = require('./routes/reports');
 const adminRoutes = require('./routes/admin');
 const categoryRoutes = require('./routes/categories');
 const adminAuthRoutes = require('./routes/adminAuth');
-const dotenv = require("dotenv");
-dotenv.config();
 
 const app = express();
 
-// Middleware
+// Enable CORS
 const allowedOrigins = [
   process.env.CLIENT_URL,
-  'http://localhost:3000'
+  'http://localhost:3000',
+  'http://localhost:5173'
 ].filter(Boolean);
 
-app.use(cors({ 
+app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -33,56 +37,47 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
 app.use(cookieParser());
 
-// Create uploads directory if it doesn't exist
+// Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Serve uploaded files
+// Serve static uploaded files
 app.use('/uploads', express.static(uploadsDir));
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log("Connected to MongoDB")) 
-  .catch(err => console.error("MongoDB connection failed:", err));
+// Connect to Database
+connectDB();
 
-// API Status route
+// Health Check Routes
 app.get('/api/status', (req, res) => {
   res.json({ status: 'Backend connected successfully' });
 });
 
-// Root route
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to CivicWatch API' });
 });
 
-// API Routes
+// Register API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/admin-auth', adminAuthRoutes);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
-    success: false, 
-    error: 'Server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred'
+// Global Error Handler Middleware
+app.use(globalErrorHandler);
+
+// Start server if not in test mode
+if (process.env.NODE_ENV !== 'test') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`CivicWatch Server running on http://localhost:${PORT}`);
   });
-});
+}
 
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
-});
-
-// Admin management scripts:
-// node checkAdmins.js
-// node createAdmin.js 
+module.exports = app;

@@ -2,21 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { 
-  TrendingUp, 
-  Clock, 
-  CheckCircle, 
-  AlertTriangle, 
-  Users, 
+import MapView from '../components/MapView';
+import { reportsAPI } from '../services/api';
+import { StatusBadge, PriorityBadge } from '../components/common/StatusBadge';
+import {
+  TrendingUp,
+  Clock,
+  CheckCircle,
+  Users,
   FileText,
-  BarChart3,
   ArrowRight
 } from 'lucide-react';
-import { API_BASE_URL } from '../config';
 
 const AdminDashboard = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [mapFilter, setMapFilter] = useState('all');
 
   useEffect(() => {
     fetchReports();
@@ -24,13 +26,15 @@ const AdminDashboard = () => {
 
   const fetchReports = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/reports`);
-      const data = await response.json();
-      if (data.success) {
-        setReports(data.data.docs || []);
+      setLoading(true);
+      const res = await reportsAPI.getAll('limit=1000');
+      if (res.success) {
+        const list = Array.isArray(res.data) ? res.data : (res.data?.docs || []);
+        setReports(list);
       }
     } catch (error) {
-      console.error('Error fetching reports:', error);
+      console.error('Error fetching reports for admin:', error);
+      setReports([]);
     } finally {
       setLoading(false);
     }
@@ -38,226 +42,189 @@ const AdminDashboard = () => {
 
   const stats = {
     total: reports.length,
-    pending: reports.filter(r => r.status === 'Pending').length,
-    inProgress: reports.filter(r => r.status === 'In Progress').length,
-    resolved: reports.filter(r => r.status === 'Resolved').length,
+    pending: reports.filter((r) => r.status === 'Pending').length,
+    inProgress: reports.filter((r) => r.status === 'In Progress').length,
+    resolved: reports.filter((r) => r.status === 'Resolved').length
   };
 
   const recentReports = reports.slice(0, 5);
 
-  const departmentStats = reports.reduce((acc, report) => {
-    const dept = report.assignedTo?.name || 'Unassigned';
-    acc[dept] = (acc[dept] || 0) + 1;
-    return acc;
-  }, {});
+  const categoryStats = {
+    General: 0,
+    'Electronic Waste': 0,
+    'Dry Waste': 0,
+    'Wet Waste': 0,
+    Infrastructure: 0
+  };
 
-  const priorityStats = reports.reduce((acc, report) => {
-    acc[report.priority] = (acc[report.priority] || 0) + 1;
-    return acc;
-  }, {});
+  reports.forEach((report) => {
+    const cats = Array.isArray(report.category) ? report.category : [report.category || 'General'];
+    cats.forEach((cat) => {
+      if (categoryStats[cat] !== undefined) {
+        categoryStats[cat] += 1;
+      }
+    });
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-        <p className="text-gray-600">Monitor and manage community issue reports</p>
+        <h1 className="text-3xl font-extrabold text-slate-900 mb-1">Admin Dashboard</h1>
+        <p className="text-sm text-slate-600">Centralized municipal command center & report metrics</p>
       </div>
 
-      {/* Key Metrics */}
+      {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card>
-          <Card.Content className="flex items-center">
-            <div className="flex-shrink-0">
-              <FileText className="h-8 w-8 text-blue-600" />
+          <Card.Content className="flex items-center p-5">
+            <div className="p-3 bg-sky-500 rounded-xl text-white">
+              <FileText className="h-6 w-6" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Total Reports</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.total}</p>
-              <p className="text-xs text-green-600">+12% from last month</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Reports</p>
+              <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
             </div>
           </Card.Content>
         </Card>
 
         <Card>
-          <Card.Content className="flex items-center">
-            <div className="flex-shrink-0">
-              <Clock className="h-8 w-8 text-yellow-600" />
+          <Card.Content className="flex items-center p-5">
+            <div className="p-3 bg-amber-500 rounded-xl text-white">
+              <Clock className="h-6 w-6" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Pending</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.pending}</p>
-              <p className="text-xs text-red-600">Needs attention</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pending</p>
+              <p className="text-2xl font-bold text-slate-900">{stats.pending}</p>
             </div>
           </Card.Content>
         </Card>
 
         <Card>
-          <Card.Content className="flex items-center">
-            <div className="flex-shrink-0">
-              <TrendingUp className="h-8 w-8 text-orange-600" />
+          <Card.Content className="flex items-center p-5">
+            <div className="p-3 bg-blue-500 rounded-xl text-white">
+              <TrendingUp className="h-6 w-6" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">In Progress</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.inProgress}</p>
-              <p className="text-xs text-blue-600">Being worked on</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">In Progress</p>
+              <p className="text-2xl font-bold text-slate-900">{stats.inProgress}</p>
             </div>
           </Card.Content>
         </Card>
 
         <Card>
-          <Card.Content className="flex items-center">
-            <div className="flex-shrink-0">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+          <Card.Content className="flex items-center p-5">
+            <div className="p-3 bg-emerald-500 rounded-xl text-white">
+              <CheckCircle className="h-6 w-6" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Resolved</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.resolved}</p>
-              <p className="text-xs text-green-600">85% resolution rate</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Resolved</p>
+              <p className="text-2xl font-bold text-slate-900">{stats.resolved}</p>
+              <p className="text-xs text-emerald-600 font-semibold">
+                {stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0}% resolution rate
+              </p>
             </div>
           </Card.Content>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Recent Reports */}
-        <Card>
-          <Card.Header>
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">Recent Reports</h2>
-              <Link to="/admin/reports">
-                <Button variant="secondary" size="sm" className="inline-flex items-center space-x-1">
-                  <span>View All</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </Card.Header>
-          <Card.Content>
-            <div className="space-y-4">
-              {recentReports.map((report) => (
-                <div key={report._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">{report.title}</h3>
-                    <p className="text-sm text-gray-600">{report.location.address}</p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        report.status === 'Resolved' ? 'bg-green-100 text-green-800' :
-                        report.status === 'In Progress' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {report.status}
-                      </span>
-                      <span className={`px-2 py-1 text-xs rounded ${
-                        report.priority === 'High' ? 'bg-red-100 text-red-800' :
-                        report.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {report.priority}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {new Date(report.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card.Content>
-        </Card>
-
-        {/* Department Workload */}
-        <Card>
-          <Card.Header>
-            <h2 className="text-xl font-semibold text-gray-900">Department Workload</h2>
-          </Card.Header>
-          <Card.Content>
-            <div className="space-y-4">
-              {Object.entries(departmentStats).map(([department, count]) => (
-                <div key={department} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Users className="h-5 w-5 text-gray-400" />
-                    <span className="font-medium text-gray-900">{department}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-20 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full" 
-                        style={{ width: `${(count / stats.total) * 100}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900 w-8">{count}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card.Content>
-        </Card>
-      </div>
+      {/* Map Section */}
+      <Card className="mb-8">
+        <Card.Header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Geographic Issues Map</h2>
+            <p className="text-xs text-slate-500">Interactive location map of community issue reports</p>
+          </div>
+          <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold text-slate-600">
+            {['all', 'Pending', 'In Progress', 'Resolved'].map((st) => (
+              <button
+                key={st}
+                onClick={() => setMapFilter(st)}
+                className={`px-3 py-1.5 rounded-lg capitalize transition-all ${
+                  mapFilter === st
+                    ? 'bg-white text-sky-700 shadow-sm font-bold'
+                    : 'hover:text-slate-900'
+                }`}
+              >
+                {st === 'all' ? 'All Status' : st}
+              </button>
+            ))}
+          </div>
+        </Card.Header>
+        <Card.Content>
+          <MapView
+            reports={
+              mapFilter === 'all'
+                ? reports
+                : reports.filter((r) => r.status === mapFilter)
+            }
+          />
+        </Card.Content>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Priority Distribution */}
+        {/* Recent Reports */}
         <Card>
-          <Card.Header>
-            <h2 className="text-xl font-semibold text-gray-900">Priority Distribution</h2>
+          <Card.Header className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-900">Recent Reports</h2>
+            <Link to="/admin/reports">
+              <Button variant="outline" size="sm" className="inline-flex items-center space-x-1 text-xs">
+                <span>View All</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
           </Card.Header>
           <Card.Content>
-            <div className="space-y-4">
-              {Object.entries(priorityStats).map(([priority, count]) => (
-                <div key={priority} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <AlertTriangle className={`h-5 w-5 ${
-                      priority === 'High' ? 'text-red-500' :
-                      priority === 'Medium' ? 'text-yellow-500' :
-                      'text-green-500'
-                    }`} />
-                    <span className="font-medium text-gray-900">{priority} Priority</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-20 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full ${
-                          priority === 'High' ? 'bg-red-500' :
-                          priority === 'Medium' ? 'bg-yellow-500' :
-                          'bg-green-500'
-                        }`}
-                        style={{ width: `${(count / stats.total) * 100}%` }}
-                      ></div>
+            {loading ? (
+              <div className="py-8 text-center text-xs text-slate-500">Loading reports...</div>
+            ) : (
+              <div className="space-y-3">
+                {recentReports.map((report) => (
+                  <div key={report._id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 text-xs">
+                    <div className="flex-1 pr-3 min-w-0">
+                      <h3 className="font-semibold text-slate-900 truncate">{report.title}</h3>
+                      <p className="text-slate-500 truncate" title={report.location?.address}>{report.location?.address}</p>
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <StatusBadge status={report.status} />
+                        <PriorityBadge priority={report.priority} />
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 truncate max-w-full">
+                          {Array.isArray(report.category) ? report.category.join(', ') : (report.category || 'General')}
+                        </span>
+                      </div>
                     </div>
-                    <span className="text-sm font-semibold text-gray-900 w-8">{count}</span>
+                    <span className="text-slate-400 font-medium text-[11px] shrink-0 self-start mt-0.5">
+                      {new Date(report.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card.Content>
         </Card>
 
-        {/* Quick Actions */}
+        {/* Workload by Category */}
         <Card>
           <Card.Header>
-            <h2 className="text-xl font-semibold text-gray-900">Quick Actions</h2>
+            <h2 className="text-lg font-bold text-slate-900">Category Workload Distribution</h2>
           </Card.Header>
           <Card.Content>
-            <div className="grid grid-cols-1 gap-4">
-              <Link to="/admin/reports">
-                <Button className="w-full justify-start" variant="secondary">
-                  <FileText className="h-5 w-5 mr-2" />
-                  Manage All Reports
-                </Button>
-              </Link>
-              <Link to="/admin/analytics">
-                <Button className="w-full justify-start" variant="secondary">
-                  <BarChart3 className="h-5 w-5 mr-2" />
-                  View Analytics
-                </Button>
-              </Link>
-              <Button className="w-full justify-start" variant="secondary">
-                <Users className="h-5 w-5 mr-2" />
-                Assign Tasks
-              </Button>
-              <Button className="w-full justify-start" variant="secondary">
-                <TrendingUp className="h-5 w-5 mr-2" />
-                Generate Report
-              </Button>
+            <div className="space-y-4 text-xs">
+              {Object.entries(categoryStats).map(([cat, count]) => {
+                const percent = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
+                return (
+                  <div key={cat} className="space-y-1">
+                    <div className="flex justify-between font-medium text-slate-700">
+                      <span className="flex items-center space-x-2">
+                        <Users className="h-4 w-4 text-slate-400" />
+                        <span>{cat}</span>
+                      </span>
+                      <span>{count} ({percent}%)</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2">
+                      <div className="bg-sky-600 h-2 rounded-full transition-all duration-300" style={{ width: `${percent}%` }}></div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </Card.Content>
         </Card>
