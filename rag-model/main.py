@@ -150,8 +150,20 @@ def categorize_report(req: CategorizeRequest):
     except Exception as e:
         logger.error(f"Error fetching active categories: {e}")
 
+    DEFAULT_CATEGORIES = [
+        "General",
+        "Waste Management",
+        "Infrastructure Repair",
+        "Water Supply",
+        "Street Lighting",
+        "Traffic & Safety",
+        "Electronic Waste",
+        "Dry Waste",
+        "Wet Waste"
+    ]
+
     if not category_names:
-        category_names = ["General"]
+        category_names = DEFAULT_CATEGORIES
 
     if GEMINI_API_KEY and GEMINI_API_KEY != "your_gemini_api_key_here":
         try:

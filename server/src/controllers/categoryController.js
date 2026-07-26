@@ -3,6 +3,11 @@ const { sendSuccess, sendError } = require('../utils/apiResponse');
 
 const DEFAULT_CATEGORIES = [
   { name: 'General', description: 'General community infrastructure and maintenance issues' },
+  { name: 'Waste Management', description: 'Overflowing bins, uncollected garbage, and sanitation hazards' },
+  { name: 'Infrastructure Repair', description: 'Potholes, damaged roads, broken sidewalks, and public structures' },
+  { name: 'Water Supply', description: 'Water leaks, pipe bursts, drainage, and sewage overflows' },
+  { name: 'Street Lighting', description: 'Faulty streetlights, dark streets, and electrical hazards' },
+  { name: 'Traffic & Safety', description: 'Traffic signal faults, road hazards, and pedestrian safety' },
   { name: 'Electronic Waste', description: 'E-waste disposal, discarded electronics, and appliances' },
   { name: 'Dry Waste', description: 'Plastic, paper, cardboards, metal, and dry rubbish' },
   { name: 'Wet Waste', description: 'Organic waste, food leftovers, and compostable waste' }

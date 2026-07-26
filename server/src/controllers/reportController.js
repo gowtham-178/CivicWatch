@@ -87,15 +87,39 @@ const categorizeWithRAG = async (title, description, location) => {
     });
     if (response.ok) {
       const data = await response.json();
-      return {
-        category: data.categories && data.categories.length > 0 ? data.categories : ['General'],
-        priority: data.priority || 'Medium'
-      };
+      if (data.categories && data.categories.length > 0 && !data.categories.every(c => c === 'General')) {
+        return {
+          category: data.categories,
+          priority: data.priority || 'Medium'
+        };
+      }
     }
   } catch (err) {
-    console.error('RAG auto-categorization call fallback:', err.message);
+    console.error('RAG auto-categorization microservice offline, using intelligent keyword classifier:', err.message);
   }
-  return { category: ['General'], priority: 'Medium' };
+
+  // Intelligent Keyword Classifier (Fallback when RAG microservice is unreachable)
+  const fullText = `${title} ${description}`.toLowerCase();
+  
+  let category = ['General'];
+  let priority = 'Medium';
+
+  if (/(trash|waste|garbage|bin|litter|dump|recycling|foul odor|smell|sanitation|cleanliness)/i.test(fullText)) {
+    category = ['Waste Management'];
+  } else if (/(pothole|road|street|infrastructure|asphalt|sidewalk|bridge|crack|lane|highway|pavement)/i.test(fullText)) {
+    category = ['Infrastructure Repair'];
+    if (/(hazard|danger|deep|night|accident|cyclist|motorcycle|damage)/i.test(fullText)) {
+      priority = 'High';
+    }
+  } else if (/(water|pipe|leak|sewage|drain|overflow|flood|burst)/i.test(fullText)) {
+    category = ['Water Supply'];
+  } else if (/(light|lamp|dark|electric|power|wire|pole|streetlight)/i.test(fullText)) {
+    category = ['Street Lighting'];
+  } else if (/(traffic|signal|vehicle|parking|collision|pedestrian|speed)/i.test(fullText)) {
+    category = ['Traffic & Safety'];
+  }
+
+  return { category, priority };
 };
 
 /**
