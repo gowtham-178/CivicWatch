@@ -86,6 +86,18 @@ const Profile = () => {
     setError('');
     setSuccess('');
 
+    if (!passwordData.currentPassword) {
+      setError('Current password is required');
+      setLoading(false);
+      return;
+    }
+
+    if (!passwordData.newPassword || passwordData.newPassword.trim().length < 6) {
+      setError('New password must be at least 6 characters long');
+      setLoading(false);
+      return;
+    }
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setError('New passwords do not match');
       setLoading(false);

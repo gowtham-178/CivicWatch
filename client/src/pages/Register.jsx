@@ -62,20 +62,26 @@ const Register = () => {
     setError('');
     setResendMsg('');
 
+    if (!formData.name || !formData.name.trim()) {
+      setError('Full Name is required');
+      setLoading(false);
+      return;
+    }
+
     if (!formData.email && !formData.phone) {
       setError('Either email address or mobile number is required');
       setLoading(false);
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+    if (!formData.password || formData.password.trim().length < 6) {
+      setError('Password must be at least 6 characters long');
       setLoading(false);
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
       setLoading(false);
       return;
     }

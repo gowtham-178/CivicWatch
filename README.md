@@ -1,31 +1,63 @@
-# CivicWatch - Community Issue Reporting Platform
+# CivicWatch - Community Issue Reporting & AI RAG Platform
 
 ![CivicWatch](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-blue)
-![Version](https://img.shields.io/badge/Version-1.1.0-orange)
+![Version](https://img.shields.io/badge/Version-1.2.0-orange)
+![Python RAG](https://img.shields.io/badge/RAG%20Microservice-FastAPI%20%2B%20Gemini-blueviolet)
+![Docker](https://img.shields.io/badge/Containerized-Docker%20%26%20Render-blue)
 
-A modern, full-stack web application that empowers communities to report, track, and resolve civic issues in real-time. Designed with a premium dark-accented user interface, glassmorphism, dynamic data visualizations, and interactive mapping.
-
-## 🎯 Features
-
-### For Citizens
-- 📝 **Detailed Reporting**: Submit community issues across specific categories (**General**, **Electronic Waste**, **Dry Waste**, and **Wet Waste**) with photos, priority ratings, and details.
-- 🗺️ **Interactive Map View**: Pinpoint issues on a geographic map (centered at Vijayawada/Benz Circle) using automatic fallback coordinate logic.
-- 📊 **Real-Time Trackers**: Monitor your report status changes from *Pending* to *In Progress* to *Resolved*.
-- 💬 **Community Discussion**: Join official and citizen-led comment sections on open issues.
-- 👍 **Upvote System**: Elevate important community concerns to draw administrative attention.
-- 👤 **Unified Session Registration**: Instant login redirection upon signup or OTP verification for a seamless experience.
+A modern, full-stack microservice platform that empowers communities to report, track, and resolve civic issues in real-time. Enhanced with an **AI RAG (Retrieval-Augmented Generation)** microservice powered by **Google Gemini LLM** and **TF-IDF Vector Search**.
 
 ---
 
-## 🚀 Quick Start
+## 🎯 Key Features
 
-### Prerequisites
-- Node.js 16+ and npm 8+
-- MongoDB (local or Atlas)
-- Git
+### 🤖 AI RAG Microservice (`rag-model`)
+- 🤖 **Constrained LLM Auto-Categorization**: Automatically categorizes reported issues strictly against active MongoDB categories using Google Gemini LLM.
+- 🔍 **RAG Knowledge Search**: Answers factual municipal queries using context retrieved directly from report records.
+- ⚡ **Fallback Vector Engine**: Uses Scikit-Learn TF-IDF cosine similarity scoring when LLM keys are absent or during API timeouts.
+- 🛡️ **Production-Hardened**: Features non-root unprivileged process execution, connection pooling, and `/health` and `/ready` probes.
 
-### Installation & Run
+### 👥 For Citizens & Administrators
+- 📝 **Detailed Reporting**: Submit community issues with photos, priority ratings, and location coordinates.
+- 🗺️ **Interactive Map View**: Pinpoint issues on a geographic map with coordinate fallback logic.
+- 📊 **Analytics Dashboard**: Interactive charts and data visualizations (Recharts) for issue resolution metrics.
+- 💬 **Community Engagement**: Comment sections and upvote mechanics on public reports.
+
+---
+
+## 🏗️ Project Architecture
+
+```
+CivicWatch/
+├── rag-model/              # Python RAG Microservice (FastAPI + Gemini + Scikit-Learn)
+│   ├── main.py            # FastAPI service entrypoint & RAG endpoints
+│   ├── requirements.txt   # Python dependencies
+│   ├── Dockerfile         # Production Python 3.11 container
+│   ├── .dockerignore
+│   └── .env.example
+│
+├── server/                 # Backend API (Node.js/Express)
+│   ├── src/               # Controllers, models, routes, and middleware
+│   ├── Dockerfile         # Production Node 18 container
+│   ├── .dockerignore
+│   └── .env.example
+│
+├── client/                 # Frontend Web App (React)
+│   ├── src/               # React components, context, and pages
+│   ├── nginx.conf         # Production Nginx SPA routing & security headers
+│   ├── Dockerfile         # Multi-stage Nginx container
+│   └── .dockerignore
+│
+├── docker-compose.yml      # Local multi-container orchestration
+└── render.yaml             # One-click Render Blueprint deployment
+```
+
+---
+
+## 🚀 Quick Start (Local & Docker)
+
+### Option 1: Run Full Stack with Docker Compose (Recommended)
 
 1. **Clone the repository**
    ```bash
@@ -33,128 +65,79 @@ A modern, full-stack web application that empowers communities to report, track,
    cd CivicWatch
    ```
 
-2. **Backend Setup**
+2. **Start all container services**
    ```bash
-   cd server
-   npm install
-   cp .env.example .env
-   # Edit .env with your MONGODB_URI and JWT_SECRET
-   npm run dev
+   docker compose up --build
    ```
-
-3. **Frontend Setup** (in new terminal)
-   ```bash
-   cd client
-   npm install
-   npm run start
-   ```
-
-4. **Access the Application**
-   - Frontend: [http://localhost:3000](http://localhost:3000)
-   - Backend: [http://localhost:5000](http://localhost:5000)
-   - Admin Login Username: `admin` | Password: `admin123`
+   * **Frontend**: [http://localhost:3000](http://localhost:3000)
+   * **Backend API**: [http://localhost:5000](http://localhost:5000)
+   * **RAG Microservice**: [http://localhost:8000](http://localhost:8000) (Docs at `/docs`)
 
 ---
 
-## 🏗️ Project Structure
+### Option 2: Manual Local Setup
 
+#### 1. RAG Microservice (`rag-model`)
+```bash
+cd rag-model
+pip install -r requirements.txt
+cp .env.example .env
+python main.py
 ```
-CivicWatch/
-├── server/                 # Backend (Node.js/Express)
-│   ├── src/
-│   │   ├── routes/        # API routes
-│   │   ├── models/        # Database schemas (User, Report, Comment, Admin)
-│   │   ├── middleware/    # Authentication & admin check middleware
-│   │   └── index.js       # Server entry point
-│   ├── tests/             # Jest backend test suite (20 passing tests)
-│   ├── .env.example       # Environment template
-│   ├── package.json
-│   └── jest.config.js
-│
-├── client/                # Frontend (React/Vite)
-│   ├── src/
-│   │   ├── pages/         # Page components (Home, AdminDashboard, AdminAnalytics, AdminReports, ReportForm)
-│   │   ├── components/    # Reusable components (MapView, Card, Button, Modal, Navbar)
-│   │   ├── context/       # Auth React Context
-│   │   ├── App.jsx        # Routing structure
-│   │   └── config.js      # Global config variables
-│   ├── .env.example       # Environment template
-│   ├── package.json
-│   └── vite.config.js
-│
-├── package.json           # Root workspace configuration
-└── docker-compose.yml     # Docker compose recipe (optional)
+
+#### 2. Backend Server (`server`)
+```bash
+cd server
+npm install
+cp .env.example .env
+npm run dev
+```
+
+#### 3. Frontend Web App (`client`)
+```bash
+cd client
+npm install
+npm run start
 ```
 
 ---
 
 ## 🔌 API Endpoints Summary
 
-### Authentication & Profiles (`/api/auth`)
-* `POST /signup` — Register citizen account.
-* `POST /verify-otp` — Verify email OTP.
-* `POST /resend-otp` — Resend verification OTP.
-* `POST /login` — Log in regular user.
-* `GET /myprofile` — Retrieve logged-in profile details.
-* `PUT /myprofile` — Edit profile details.
-* `POST /change-password` — Change password.
+### RAG Microservice (`/api`)
+* `GET /health` — Liveness health check probe.
+* `GET /ready` — Readiness probe (database connectivity ping).
+* `POST /api/categorize` — Constrained LLM & vector categorization.
+* `POST /api/rag-query` — RAG vector search & generative summary.
 
-### Admin Authentication (`/api/admin-auth`)
-* `POST /login` — Log in administrator.
-
-### Reports & Engagement (`/api/reports`)
-* `GET /` — List reports (supports search, category, status, and priority query filters).
-* `GET /my-reports` — View user-specific reports.
-* `GET /:id` — Get full report details, comments, and attachments.
-* `POST /` — Submit report (multipart form-data for photo uploads).
-* `PUT /:id` — Edit report details or update status (Admins).
-* `DELETE /:id` — Remove report.
-* `POST /:id/comments` — Comment on report.
-* `POST /:id/upvote` — Toggle upvote on report.
-
-### Admin Tools (`/api/admin`)
-* `GET /dashboard` — Retrieve database aggregate analytics.
-* `GET /users` — Get paginated users listing.
-* `PUT /users/:id/role` — Update roles.
-* `DELETE /users/:id` — Delete user account.
-* `GET /reports/attention` — Get high-priority pending reports.
+### Backend Authentication & Management (`/api`)
+* `POST /auth/signup` — Register citizen account.
+* `POST /auth/verify-otp` — Verify email OTP.
+* `POST /auth/login` — Log in user.
+* `POST /admin-auth/login` — Log in administrator.
+* `GET /reports` — Search & list reports.
+* `POST /reports` — Submit new report.
 
 ---
 
-## 🧪 Testing
+## ☁️ Deployment (Render)
 
-Run backend tests:
-```bash
-cd server
-npm test
-```
+This repository includes a [render.yaml](file:///d:/Projects/CivicWatch/render.yaml) blueprint for automated deployment on Render.
 
-### Test Coverage Highlights
-* **20 automated tests** passing 100% (covering User Registration, OTP logic, login security, report submission and authorization, password updates).
+1. Connect your repository in [Render Dashboard](https://dashboard.render.com/).
+2. Select **New +** → **Blueprint**.
+3. Render automatically provisions the **RAG Microservice**, **Backend API**, and **Frontend App**.
+4. Configure environment variables (`MONGODB_URI`, `GEMINI_API_KEY`, `JWT_SECRET`) in the Render Dashboard.
 
 ---
 
-## 🛠️ Tech Stack
+## 🔒 Security & Quality Standards
 
-* **Backend**: Node.js, Express, MongoDB (via Mongoose), JWT, Multer (image uploads), Nodemailer, Jest, Supertest.
-* **Frontend**: React 18, TailwindCSS, React Router v6, Recharts (visualizations), Lucide React (icons).
-
----
-
-## 🔒 Security & Performance Features
-
-* **Authentication & Cryptography**: Passwords protected with bcrypt hashing; tokens managed via JSON Web Tokens (JWT).
-* **Role Enforcement**: Middleware checks role restrictions (`adminRequired`) on endpoints.
-* **Optimized Rendering**: Dynamic queries pull complete datasets (up to 1000 records) to compute client-side statistics accurately.
-* **Validation**: Input sanity checks on backend controllers and file upload limit set to 5MB.
+* **Unprivileged Containers**: All Docker containers execute using non-root system users (`USER appuser`, `USER node`).
+* **Secret Protection**: All environment secrets (`.env`, `.env.local`, `.env.production`) are excluded via [.gitignore](file:///d:/Projects/CivicWatch/.gitignore).
+* **Health Probes**: Automated `HEALTHCHECK` instructions configured across microservices.
+* **SPA Routing & Security**: Nginx configured with `try_files` SPA routing, gzip compression, and security headers (`X-Frame-Options`, `X-Content-Type-Options`).
 
 ---
-
-## 🤝 Support & Contribution
-
-1. Fork this repository.
-2. Create your feature branch (`git checkout -b feature/cool-feature`).
-3. Commit and push (`git push origin feature/cool-feature`).
-4. Open a Pull Request.
 
 **Made with ❤️ for community improvement**

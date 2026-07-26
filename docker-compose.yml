@@ -9,6 +9,8 @@ services:
       - ./server/.env
     volumes:
       - ./server/uploads:/app/uploads
+    depends_on:
+      - rag-service
 
   frontend:
     build: ./client
@@ -16,3 +18,12 @@ services:
       - "3000:80"
     depends_on:
       - backend
+
+  rag-service:
+    build: ./rag-model
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./rag-model/.env
+    environment:
+      - PORT=8000

@@ -19,7 +19,7 @@ const registerUser = async (req, res) => {
     return sendError(res, 'Passwords do not match', 400);
   }
 
-  if (password.length < 6) {
+  if (password.trim().length < 6) {
     return sendError(res, 'Password must be at least 6 characters long', 400);
   }
 
@@ -341,8 +341,8 @@ const changePassword = async (req, res) => {
     return sendError(res, 'Passwords do not match', 400);
   }
 
-  if (newPassword.length < 6) {
-    return sendError(res, 'Password must be at least 6 characters long', 400);
+  if (newPassword.trim().length < 6) {
+    return sendError(res, 'New password must be at least 6 characters long', 400);
   }
 
   const AccountModel = (req.user && req.user.role === 'admin') ? Admin : User;

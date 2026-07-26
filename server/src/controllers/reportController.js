@@ -76,27 +76,42 @@ const getReportById = async (req, res) => {
   return sendSuccess(res, report);
 };
 
+const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || 'http://localhost:8000';
+
+const categorizeWithRAG = async (title, description, location) => {
+  try {
+    const response = await fetch(`${RAG_SERVICE_URL}/api/categorize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, description, location: location || '' })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        category: data.categories && data.categories.length > 0 ? data.categories : ['General'],
+        priority: data.priority || 'Medium'
+      };
+    }
+  } catch (err) {
+    console.error('RAG auto-categorization call fallback:', err.message);
+  }
+  return { category: ['General'], priority: 'Medium' };
+};
+
 /**
  * Create a new report
  */
 const createReport = async (req, res) => {
-  const { title, description, location, category, priority, latitude, longitude, lat, lng } = req.body;
+  const { title, description, location, latitude, longitude, lat, lng } = req.body;
 
-  if (!title || !description || !location || !category) {
-    return sendError(res, 'Missing required fields: title, description, location, category', 400);
+  if (!title || !description || !location) {
+    return sendError(res, 'Missing required fields: title, description, location', 400);
   }
 
-  let parsedCategory = ['General'];
-  if (Array.isArray(category)) {
-    parsedCategory = category;
-  } else if (typeof category === 'string') {
-    try {
-      const parsed = JSON.parse(category);
-      parsedCategory = Array.isArray(parsed) ? parsed : [parsed];
-    } catch (e) {
-      parsedCategory = category.split(',').map((c) => c.trim()).filter(Boolean);
-    }
-  }
+  // RAG Microservice Auto-Categorization
+  const ragResult = await categorizeWithRAG(title, description, location);
+  const autoCategory = ragResult.category;
+  const autoPriority = ragResult.priority;
 
   const reportLat = latitude || lat;
   const reportLng = longitude || lng;
@@ -111,8 +126,8 @@ const createReport = async (req, res) => {
       address: location,
       ...(coordinates && { coordinates })
     },
-    category: parsedCategory,
-    priority: priority || 'Medium',
+    category: autoCategory,
+    priority: autoPriority,
     images: imageUrl ? [imageUrl] : [],
     submittedBy: req.user.id
   });
@@ -147,6 +162,11 @@ const updateReport = async (req, res) => {
   }
 
   const { title, description, address, lat, lng, category, priority, status, resolutionNotes } = req.body;
+
+  // Status Lock: Resolved reports cannot have their status modified
+  if (report.status === 'Resolved' && status && status !== 'Resolved') {
+    return sendError(res, 'This report has been resolved and its status cannot be modified.', 400);
+  }
 
   if (title) report.title = title;
   if (description) report.description = description;

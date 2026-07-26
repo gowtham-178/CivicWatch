@@ -124,19 +124,6 @@ const Navbar = () => {
                       <span>Profile & Settings</span>
                     </Link>
 
-                    {!userIsAdmin() && (
-                      <Link
-                        to="/my-reports"
-                        onClick={() => setShowUserMenu(false)}
-                        className="flex items-center w-full px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                      >
-                        <FileText className="h-4 w-4 mr-2.5 text-emerald-600" />
-                        <span>My Reports</span>
-                      </Link>
-                    )}
-
-                    <div className="border-t border-slate-100 my-1"></div>
-
                     <button
                       onClick={() => {
                         logout();

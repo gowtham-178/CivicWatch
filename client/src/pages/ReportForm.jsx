@@ -306,56 +306,14 @@ const ReportForm = () => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-                Categories *
-              </label>
-              <div className="grid grid-cols-2 gap-3 p-3 border border-slate-200 rounded-lg bg-slate-50">
-                {['General', 'Electronic Waste', 'Dry Waste', 'Wet Waste', 'Infrastructure'].map((cat) => {
-                  const isChecked = formData.category.includes(cat);
-                  return (
-                    <label key={cat} className="flex items-center space-x-2 cursor-pointer text-xs font-medium text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setFormData((prev) => {
-                            let updated = [...prev.category];
-                            if (checked) {
-                              updated.push(cat);
-                            } else {
-                              updated = updated.filter((c) => c !== cat);
-                            }
-                            if (updated.length === 0) updated = ['General'];
-                            return { ...prev, category: updated };
-                          });
-                        }}
-                        className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-slate-300 rounded"
-                      />
-                      <span>{cat}</span>
-                    </label>
-                  );
-                })}
+            <div className="bg-sky-50 border border-sky-200 rounded-lg p-3.5 flex items-start space-x-3">
+              <div className="text-xl">🤖</div>
+              <div>
+                <h4 className="text-xs font-bold text-sky-900 uppercase tracking-wider">AI Auto-Categorization Active</h4>
+                <p className="text-xs text-sky-700 mt-0.5">
+                  Category & priority will be automatically detected and assigned by CivicWatch AI when you submit this report.
+                </p>
               </div>
-            </div>
-
-            <div>
-              <label htmlFor="priority" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                Priority Level
-              </label>
-              <select
-                id="priority"
-                name="priority"
-                value={formData.priority}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-              >
-                <option value="Low">Low - Minor inconvenience</option>
-                <option value="Medium">Medium - Moderate impact</option>
-                <option value="High">High - Safety concern or major impact</option>
-                <option value="Critical">Critical - Emergency / Severe hazard</option>
-              </select>
             </div>
 
             <div>

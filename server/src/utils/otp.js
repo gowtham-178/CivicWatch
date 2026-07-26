@@ -24,8 +24,8 @@ const sendOtpEmail = async (email, otp) => {
   }
 
   if (!email) {
-    console.log(`\n======================================================\n🔑 [DEVELOPMENT OTP] Phone signup. Generated OTP: ${otp}\n======================================================\n`);
-    return true;
+    console.error('[SMTP ERROR] No recipient email address provided.');
+    return false;
   }
 
   const hasRealCredentials =
@@ -34,12 +34,9 @@ const sendOtpEmail = async (email, otp) => {
     process.env.EMAIL_PASSWORD &&
     !process.env.EMAIL_PASSWORD.includes('your_app_password');
 
-  // Always log OTP to server console for instant local development & debugging
-  console.log(`\n======================================================\n🔑 [CIVICWATCH OTP] Verification Code for ${email}: ${otp}\n======================================================\n`);
-
   if (!hasRealCredentials) {
-    console.log(`[SMTP NOTICE] Real email credentials not set in server/.env (EMAIL_USER / EMAIL_PASSWORD). Using terminal console OTP above.`);
-    return true;
+    console.error('[SMTP ERROR] Real email credentials (EMAIL_USER / EMAIL_PASSWORD) not set in server/.env.');
+    return false;
   }
 
   try {
@@ -58,14 +55,10 @@ const sendOtpEmail = async (email, otp) => {
         </div>
       `
     });
-    console.log(`[SMTP SUCCESS] Real OTP email sent successfully to ${email}`);
+    console.log(`[SMTP SUCCESS] OTP email dispatched successfully to ${email}`);
     return true;
   } catch (err) {
-    console.error('[SMTP ERROR] Email dispatch failed:', err.message);
-    if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
-      console.log(`[DEVELOPMENT FALLBACK] Email failed. Use terminal console OTP above.`);
-      return true;
-    }
+    console.error(`[SMTP ERROR] Failed to dispatch OTP email to ${email}:`, err.message);
     return false;
   }
 };

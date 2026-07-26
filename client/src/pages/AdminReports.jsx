@@ -197,16 +197,22 @@ const AdminReports = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <select
-                        value={report.status}
-                        onChange={(e) => handleStatusUpdate(report._id, e.target.value)}
-                        className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-sky-500"
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Resolved">Resolved</option>
-                        <option value="Rejected">Rejected</option>
-                      </select>
+                      {report.status === 'Resolved' ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          🔒 Resolved (Locked)
+                        </span>
+                      ) : (
+                        <select
+                          value={report.status}
+                          onChange={(e) => handleStatusUpdate(report._id, e.target.value)}
+                          className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-sky-500"
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="In Progress">In Progress</option>
+                          <option value="Resolved">Resolved</option>
+                          <option value="Rejected">Rejected</option>
+                        </select>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <PriorityBadge priority={report.priority} />
