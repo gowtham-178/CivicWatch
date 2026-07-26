@@ -100,6 +100,11 @@ const Register = () => {
         credentials: 'include'
       });
 
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`Server returned status ${res.status}. Please check backend API configuration.`);
+      }
+
       const data = await res.json();
 
       if (!data.success) {
@@ -121,7 +126,7 @@ const Register = () => {
       }
     } catch (err) {
       console.error(err);
-      setError('Server error. Please try again.');
+      setError(err.message || 'Server error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -149,6 +154,11 @@ const Register = () => {
         credentials: 'include'
       });
 
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`Server returned status ${res.status}. Please check backend API configuration.`);
+      }
+
       const data = await res.json();
 
       if (!data.success) {
@@ -165,7 +175,7 @@ const Register = () => {
       setShowSuccessModal(true);
     } catch (err) {
       console.error(err);
-      setError('Server error. Please try again.');
+      setError(err.message || 'Server error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -186,6 +196,11 @@ const Register = () => {
         credentials: 'include'
       });
 
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`Server returned status ${res.status}. Please check backend API configuration.`);
+      }
+
       const data = await res.json();
 
       if (!data.success) {
@@ -197,7 +212,7 @@ const Register = () => {
       }
     } catch (err) {
       console.error(err);
-      setError('Server error. Please try again.');
+      setError(err.message || 'Server error. Please try again.');
     } finally {
       setLoading(false);
     }
