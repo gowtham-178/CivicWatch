@@ -51,13 +51,19 @@ const registerUser = async (req, res) => {
   const otp = generateOtp();
   const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
+  const hasRealCredentials =
+    process.env.EMAIL_USER &&
+    !process.env.EMAIL_USER.includes('your_email@gmail.com') &&
+    process.env.EMAIL_PASSWORD &&
+    !process.env.EMAIL_PASSWORD.includes('your_app_password');
+
   const user = new User({
     name,
     email: targetEmail ? targetEmail.toLowerCase() : undefined,
     phone: targetPhone || undefined,
     password: hashedPassword,
     role: 'user',
-    isEmailVerified: false,
+    isEmailVerified: !hasRealCredentials,
     emailOtp: otp,
     otpExpiry
   });

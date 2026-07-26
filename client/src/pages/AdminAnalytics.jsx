@@ -21,6 +21,7 @@ import { TrendingUp, Clock, Users, Target } from 'lucide-react';
 
 const AdminAnalytics = () => {
   const [dashboardData, setDashboardData] = useState(null);
+  const [timeRange, setTimeRange] = useState('30');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -119,7 +120,7 @@ const AdminAnalytics = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             <Card>
               <Card.Header>
-                <h2 className="text-base font-bold text-slate-900">Report Submission Trend</h2>
+                <h2 className="text-base font-bold text-slate-900">30-Day Submission Trend</h2>
               </Card.Header>
               <Card.Content>
                 <ResponsiveContainer width="100%" height={260}>
