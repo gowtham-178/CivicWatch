@@ -80,11 +80,11 @@ const sendOtpEmail = async (email, otp) => {
 
   if (transporter) {
     try {
-      const fromEmail = process.env.EMAIL_USER.trim();
+      const fromEmail = (process.env.EMAIL_USER && process.env.EMAIL_USER.trim()) || 'no-reply@civicwatch.org';
 
       const mailOptions = {
         from: `"CivicWatch" <${fromEmail}>`,
-        to: email,
+        to: email.trim().toLowerCase(),
         subject: 'CivicWatch Email Verification OTP',
         html: htmlContent
       };
