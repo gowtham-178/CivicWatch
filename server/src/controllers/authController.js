@@ -51,12 +51,6 @@ const registerUser = async (req, res) => {
   const otp = generateOtp();
   const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
-  const hasRealCredentials =
-    Boolean(process.env.EMAIL_USER) &&
-    !process.env.EMAIL_USER.includes('your_email@gmail.com') &&
-    Boolean(process.env.EMAIL_PASSWORD) &&
-    !process.env.EMAIL_PASSWORD.includes('your_app_password');
-
   const user = new User({
     name,
     email: targetEmail ? targetEmail.toLowerCase() : undefined,
@@ -70,14 +64,14 @@ const registerUser = async (req, res) => {
 
   await user.save();
 
-  const emailSent = await sendOtpEmail(targetEmail || targetPhone, otp);
+  const emailSent = await sendOtpEmail(targetEmail, otp);
   if (!emailSent) {
     return sendError(res, 'Failed to send OTP verification code', 500);
   }
 
   return sendSuccess(
     res,
-    { email: targetEmail || targetPhone },
+    { email: targetEmail },
     'Registration successful. OTP sent for verification.',
     201
   );
@@ -90,7 +84,7 @@ const verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
 
   if (!email || !otp) {
-    return sendError(res, 'Email/Phone and OTP are required', 400);
+    return sendError(res, 'Email and OTP are required', 400);
   }
 
   const targetIdentifier = email.trim();
@@ -136,7 +130,7 @@ const resendOtp = async (req, res) => {
   const { email } = req.body;
 
   if (!email) {
-    return sendError(res, 'Email/Phone is required', 400);
+    return sendError(res, 'Email is required', 400);
   }
 
   const targetIdentifier = email.trim();
