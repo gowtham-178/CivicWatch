@@ -2,6 +2,42 @@ const generateOtp = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+let cachedTransporter = null;
+
+const getTransporter = () => {
+  const emailUser = process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '';
+  const emailPass = process.env.EMAIL_PASSWORD ? process.env.EMAIL_PASSWORD.trim() : '';
+
+  const isValidCredential =
+    emailUser &&
+    !emailUser.includes('your_email@gmail.com') &&
+    emailPass &&
+    !emailPass.includes('your_app_password') &&
+    !emailPass.includes('your_16_character_app_password');
+
+  if (!isValidCredential) {
+    return null;
+  }
+
+  if (!cachedTransporter) {
+    const nodemailer = require('nodemailer');
+    cachedTransporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true, // Use SSL
+      auth: {
+        user: emailUser,
+        pass: emailPass
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000
+    });
+  }
+
+  return cachedTransporter;
+};
+
 const sendOtpEmail = async (email, otp) => {
   if (process.env.NODE_ENV === 'test') {
     return true;
@@ -23,33 +59,31 @@ const sendOtpEmail = async (email, otp) => {
     </div>
   `;
 
-  // 1. Try Gmail App Password via Nodemailer
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
-    try {
-      const nodemailer = require('nodemailer');
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER.trim(),
-          pass: process.env.EMAIL_PASSWORD.trim()
-        }
-      });
+  const transporter = getTransporter();
 
-      await transporter.sendMail({
+  if (transporter) {
+    try {
+      // Race email sending against a 5-second timeout to prevent API hangs
+      const sendPromise = transporter.sendMail({
         from: `"CivicWatch" <${process.env.EMAIL_USER.trim()}>`,
         to: email,
         subject: 'CivicWatch Email Verification OTP',
         html: htmlContent
       });
 
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Email dispatch timed out after 10000ms')), 10000)
+      );
+
+      await Promise.race([sendPromise, timeoutPromise]);
       console.log(`[GMAIL SUCCESS] OTP email dispatched to ${email}`);
       return true;
     } catch (err) {
-      console.error(`[GMAIL ERROR] Failed to send email to ${email}:`, err.message);
+      console.error(`[GMAIL ERROR] ${err.message}.`);
     }
   }
 
-  // Fallback: If no email credentials are configured or email fails, print OTP code in server logs so signups are not blocked
+  // Fallback: If no real credentials are set or SMTP fails/times out, log OTP code to terminal
   console.log(`[EMAIL FALLBACK] OTP Code for ${email} is: ${otp}`);
   return true;
 };
