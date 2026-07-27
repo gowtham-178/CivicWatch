@@ -20,9 +20,7 @@ const app = express();
 
 // Enable CORS
 const allowedOrigins = [
-  process.env.CLIENT_URL,
-  'http://localhost:3000',
-  'http://localhost:5173'
+  process.env.CLIENT_URL
 ].filter(Boolean);
 
 app.use(cors({
@@ -72,12 +70,5 @@ app.use('/api/admin-auth', adminAuthRoutes);
 // Global Error Handler Middleware
 app.use(globalErrorHandler);
 
-// Start server if not in test mode
-if (process.env.NODE_ENV !== 'test') {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`CivicWatch Server running on http://localhost:${PORT}`);
-  });
-}
 
 module.exports = app;
