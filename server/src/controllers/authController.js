@@ -52,9 +52,9 @@ const registerUser = async (req, res) => {
   const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
   const hasRealCredentials =
-    process.env.EMAIL_USER &&
+    Boolean(process.env.EMAIL_USER) &&
     !process.env.EMAIL_USER.includes('your_email@gmail.com') &&
-    process.env.EMAIL_PASSWORD &&
+    Boolean(process.env.EMAIL_PASSWORD) &&
     !process.env.EMAIL_PASSWORD.includes('your_app_password');
 
   const user = new User({
@@ -63,7 +63,7 @@ const registerUser = async (req, res) => {
     phone: targetPhone || undefined,
     password: hashedPassword,
     role: 'user',
-    isEmailVerified: !hasRealCredentials,
+    isEmailVerified: false,
     emailOtp: otp,
     otpExpiry
   });

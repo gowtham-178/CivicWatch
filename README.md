@@ -102,6 +102,27 @@ npm run start
 
 ---
 
+## 📧 OTP Email Service Setup
+
+CivicWatch handles email dispatch via **Google App Passwords** (using `nodemailer`) with an automatic terminal log fallback in `server/src/utils/otp.js`:
+
+1. **Google App Passwords (Gmail SMTP)**
+   - Enable 2-Step Verification on your Google Account.
+   - Generate an App Password at [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords).
+   - Add to `server/.env`:
+     ```env
+     EMAIL_USER=your_email@gmail.com
+     EMAIL_PASSWORD=your_16_character_app_password
+     ```
+
+2. **Console Log Fallback (Instant Local Testing)**
+   - If no credentials are configured in `.env`, the server prints the 6-digit verification code directly to the backend terminal:
+     ```text
+     [EMAIL FALLBACK] OTP Code for citizen@example.com is: 123456
+     ```
+
+---
+
 ## 🔌 API Endpoints Summary
 
 ### RAG Microservice (`/api`)
