@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-**Access**: http://localhost:5173
+**Access**: http://127.0.0.1:5173
 
 ---
 
@@ -26,7 +26,7 @@ npm run dev
 ### Backend .env (Required Fields)
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/civicwatch
+MONGODB_URI=mongodb://127.0.0.1:27017/civicwatch
 JWT_SECRET=your_super_secret_key_32_chars_minimum
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASSWORD=your_app_specific_password
@@ -35,8 +35,8 @@ NODE_ENV=development
 
 ### Frontend .env.local (Required Fields)
 ```env
-VITE_API_BASE_URL=http://localhost:5000/api
-VITE_API_SERVER_URL=http://localhost:5000
+VITE_API_BASE_URL=http://127.0.0.1:5000/api
+VITE_API_SERVER_URL=http://127.0.0.1:5000
 ```
 
 ---
