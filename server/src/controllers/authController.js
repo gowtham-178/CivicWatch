@@ -26,17 +26,9 @@ const registerUser = async (req, res) => {
   let targetEmail = email ? email.trim() : null;
   let targetPhone = phone ? phone.trim() : null;
 
-  if (emailOrPhone) {
-    const trimmedVal = emailOrPhone.trim();
-    if (trimmedVal.includes('@')) {
-      targetEmail = trimmedVal;
-    } else {
-      targetPhone = trimmedVal;
-    }
-  }
 
-  if (!targetEmail && !targetPhone) {
-    return sendError(res, 'Email or phone number is required', 400);
+  if (!targetEmail) {
+    return sendError(res, 'Email is required', 400);
   }
 
   if (targetEmail) {
@@ -78,7 +70,7 @@ const registerUser = async (req, res) => {
 };
 
 /**
- * Verify Email / Phone OTP
+ * Verify Email OTP
  */
 const verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
@@ -154,12 +146,12 @@ const resendOtp = async (req, res) => {
   user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
   await user.save();
 
-  const emailSent = await sendOtpEmail(user.email || user.phone, otp);
+  const emailSent = await sendOtpEmail(user.email, otp);
   if (!emailSent) {
     return sendError(res, 'Failed to send OTP code', 500);
   }
 
-  return sendSuccess(res, { email: user.email || user.phone }, 'OTP resent successfully');
+  return sendSuccess(res, { email: user.email }, 'OTP resent successfully');
 };
 
 /**
@@ -222,13 +214,13 @@ const loginUser = async (req, res) => {
     user.emailOtp = otp;
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
-    await sendOtpEmail(user.email || user.phone, otp);
+    await sendOtpEmail(user.email, otp);
 
     return res.status(400).json({
       success: false,
       error: 'Account not verified. A fresh OTP code has been sent to your email/phone.',
       requiresOtp: true,
-      email: user.email || user.phone
+      email: user.email
     });
   }
 
