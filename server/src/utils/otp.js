@@ -1,33 +1,132 @@
-const nodemailer = require('nodemailer');
+const https = require('https');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * Generate a 6-digit numeric OTP code
+ * @returns {string} 6-digit OTP
+ */
 const generateOtp = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-const getTransporter = () => {
-  const emailUser = process.env.EMAIL_USER;
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+/**
+ * Exchange Google OAuth2 Refresh Token for an Access Token over HTTPS (Port 443)
+ */
+const getGoogleAccessToken = () => {
+  return new Promise((resolve, reject) => {
+    const postData = new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID.trim(),
+      client_secret: process.env.GOOGLE_CLIENT_SECRET.trim(),
+      refresh_token: process.env.GOOGLE_REFRESH_TOKEN.trim(),
+      grant_type: 'refresh_token'
+    }).toString();
 
-  if (!emailUser || !clientId || !clientSecret || !refreshToken) {
-    return null;
-  }
+    const options = {
+      hostname: 'oauth2.googleapis.com',
+      port: 443,
+      path: '/token',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(postData)
+      },
+      timeout: 10000
+    };
 
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      type: 'OAuth2',
-      user: emailUser.trim(),
-      clientId: clientId.trim(),
-      clientSecret: clientSecret.trim(),
-      refreshToken: refreshToken.trim()
-    }
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(body);
+          if (parsed.access_token) {
+            resolve(parsed.access_token);
+          } else {
+            reject(new Error(parsed.error_description || parsed.error || 'Failed to obtain Google access token'));
+          }
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Google OAuth2 token request timed out')); });
+    req.write(postData);
+    req.end();
   });
 };
 
+/**
+ * Send email via Gmail REST API over pure HTTPS (Port 443 - zero SMTP dependency)
+ */
+const sendViaGmailRestApi = async (toEmail, subject, htmlContent) => {
+  const accessToken = await getGoogleAccessToken();
+  const fromEmail = process.env.EMAIL_USER.trim();
+
+  const rawMessage = [
+    `From: "CivicWatch" <${fromEmail}>`,
+    `To: ${toEmail}`,
+    `Subject: ${subject}`,
+    `Content-Type: text/html; charset=utf-8`,
+    `MIME-Version: 1.0`,
+    ``,
+    htmlContent
+  ].join('\r\n');
+
+  const base64EncodedMessage = Buffer.from(rawMessage)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  const postData = JSON.stringify({ raw: base64EncodedMessage });
+
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'gmail.googleapis.com',
+      port: 443,
+      path: '/gmail/v1/users/me/messages/send',
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData)
+      },
+      timeout: 10000
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(body);
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(parsed);
+          } else {
+            reject(new Error(parsed.error ? parsed.error.message : `Gmail API returned HTTP ${res.statusCode}`));
+          }
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Gmail REST API request timed out')); });
+    req.write(postData);
+    req.end();
+  });
+};
+
+/**
+ * Send OTP to the specified email using Gmail REST API over HTTPS
+ * @param {string} email - Recipient email address
+ * @param {string} otp - OTP code to send
+ * @returns {Promise<boolean>} Success status
+ */
 const sendOtpEmail = async (email, otp) => {
   const timestamp = new Date().toISOString();
 
@@ -47,22 +146,20 @@ const sendOtpEmail = async (email, otp) => {
     </div>
   `;
 
-  const transporter = getTransporter();
+  const emailUser = process.env.EMAIL_USER;
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
 
-  if (transporter) {
+  const hasOAuthCredentials = emailUser && clientId && clientSecret && refreshToken;
+
+  if (hasOAuthCredentials) {
     try {
-      const mailOptions = {
-        from: `"CivicWatch" <${process.env.EMAIL_USER.trim()}>`,
-        to: email.trim().toLowerCase(),
-        subject: 'CivicWatch Email Verification OTP',
-        html: htmlContent
-      };
-
-      const info = await transporter.sendMail(mailOptions);
-      console.log(`[${timestamp}] [EMAIL SUCCESS] OTP email successfully delivered via OAuth2 to ${email} (MessageID: ${info.messageId || 'N/A'})`);
+      const result = await sendViaGmailRestApi(email.trim().toLowerCase(), 'CivicWatch Email Verification OTP', htmlContent);
+      console.log(`[${timestamp}] [EMAIL SUCCESS] OTP email successfully sent via Gmail REST API (HTTPS Port 443) to ${email} (MessageID: ${result.id || 'N/A'})`);
       return true;
     } catch (err) {
-      console.error(`[${timestamp}] [EMAIL FAILURE] Google OAuth2 dispatch failed for ${email}. Reason: ${err.message}`);
+      console.error(`[${timestamp}] [EMAIL FAILURE] Gmail REST API dispatch failed for ${email}. Reason: ${err.message}`);
       if (process.env.NODE_ENV !== 'production') {
         console.log(`[${timestamp}] [EMAIL DEV FALLBACK] OTP Code for ${email} is: ${otp}`);
         return true;
