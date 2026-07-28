@@ -59,20 +59,41 @@ const getGoogleAccessToken = () => {
 };
 
 /**
- * Send email via Gmail REST API over pure HTTPS (Port 443 - zero SMTP dependency)
+ * Send email via Gmail REST API over pure HTTPS (Port 443) using MIME multipart/alternative to prevent spam flags
  */
-const sendViaGmailRestApi = async (toEmail, subject, htmlContent) => {
+const sendViaGmailRestApi = async (toEmail, subject, otp, htmlContent) => {
   const accessToken = await getGoogleAccessToken();
   const fromEmail = process.env.EMAIL_USER.trim();
+  const dateStr = new Date().toUTCString();
+  const messageId = `<otp-${Date.now()}-${Math.random().toString(36).substring(2, 8)}@civicwatch.org>`;
+  const boundary = `====_MIME_boundary_${Date.now()}_====`;
+
+  const plainTextContent = `Your CivicWatch verification passcode (OTP) is: ${otp}\n\nThis code will expire in 10 minutes.\nIf you did not request this, please ignore this email.`;
 
   const rawMessage = [
     `From: "CivicWatch" <${fromEmail}>`,
     `To: ${toEmail}`,
     `Subject: ${subject}`,
-    `Content-Type: text/html; charset=utf-8`,
+    `Date: ${dateStr}`,
+    `Message-ID: ${messageId}`,
+    `Reply-To: ${fromEmail}`,
+    `Auto-Submitted: auto-generated`,
     `MIME-Version: 1.0`,
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
     ``,
-    htmlContent
+    `--${boundary}`,
+    `Content-Type: text/plain; charset=utf-8`,
+    `Content-Transfer-Encoding: 7bit`,
+    ``,
+    plainTextContent,
+    ``,
+    `--${boundary}`,
+    `Content-Type: text/html; charset=utf-8`,
+    `Content-Transfer-Encoding: 7bit`,
+    ``,
+    htmlContent,
+    ``,
+    `--${boundary}--`
   ].join('\r\n');
 
   const base64EncodedMessage = Buffer.from(rawMessage)
@@ -155,7 +176,8 @@ const sendOtpEmail = async (email, otp) => {
 
   if (hasOAuthCredentials) {
     try {
-      const result = await sendViaGmailRestApi(email.trim().toLowerCase(), 'CivicWatch Email Verification OTP', htmlContent);
+      const subject = `Your CivicWatch Verification Code: ${otp}`;
+      const result = await sendViaGmailRestApi(email.trim().toLowerCase(), subject, otp, htmlContent);
       console.log(`[${timestamp}] [EMAIL SUCCESS] OTP email successfully sent via Gmail REST API (HTTPS Port 443) to ${email} (MessageID: ${result.id || 'N/A'})`);
       return true;
     } catch (err) {
