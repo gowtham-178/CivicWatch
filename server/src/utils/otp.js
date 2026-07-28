@@ -29,8 +29,10 @@ const getTransporter = () => {
 };
 
 const sendOtpEmail = async (email, otp) => {
+  const timestamp = new Date().toISOString();
+
   if (!email || typeof email !== 'string' || !EMAIL_REGEX.test(email.trim())) {
-    console.error('[EMAIL ERROR] Invalid or missing recipient email address.');
+    console.error(`[${timestamp}] [EMAIL FAILURE] Invalid or missing recipient email address: "${email}"`);
     return false;
   }
 
@@ -56,13 +58,13 @@ const sendOtpEmail = async (email, otp) => {
         html: htmlContent
       };
 
-      await transporter.sendMail(mailOptions);
-      console.log(`[NODEMAILER SUCCESS] OTP email successfully sent to ${email}`);
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`[${timestamp}] [EMAIL SUCCESS] OTP email successfully delivered via OAuth2 to ${email} (MessageID: ${info.messageId || 'N/A'})`);
       return true;
     } catch (err) {
-      console.error(`[NODEMAILER ERROR] ${err.message}`);
+      console.error(`[${timestamp}] [EMAIL FAILURE] Google OAuth2 dispatch failed for ${email}. Reason: ${err.message}`);
       if (process.env.NODE_ENV !== 'production') {
-        console.log(`[NODEMAILER DEV FALLBACK] OTP Code for ${email} is: ${otp}`);
+        console.log(`[${timestamp}] [EMAIL DEV FALLBACK] OTP Code for ${email} is: ${otp}`);
         return true;
       }
       return false;
@@ -70,7 +72,7 @@ const sendOtpEmail = async (email, otp) => {
   }
 
   // Development Fallback: Log to console when credentials are missing
-  console.log(`[NODEMAILER FALLBACK] OTP Code for ${email} is: ${otp}`);
+  console.log(`[${timestamp}] [EMAIL NOTICE] Google OAuth2 credentials not set in .env. Console Fallback OTP for ${email} is: ${otp}`);
   return true;
 };
 
