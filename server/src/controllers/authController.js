@@ -56,10 +56,8 @@ const registerUser = async (req, res) => {
 
   await user.save();
 
-  const emailSent = await sendOtpEmail(targetEmail, otp);
-  if (!emailSent) {
-    return sendError(res, 'Failed to send OTP verification code', 500);
-  }
+  // Send OTP email asynchronously in background so response isn't blocked by mail delays
+  sendOtpEmail(targetEmail, otp).catch(err => console.error('[EMAIL DISPATCH ERROR]', err));
 
   return sendSuccess(
     res,
@@ -146,10 +144,8 @@ const resendOtp = async (req, res) => {
   user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
   await user.save();
 
-  const emailSent = await sendOtpEmail(user.email, otp);
-  if (!emailSent) {
-    return sendError(res, 'Failed to send OTP code', 500);
-  }
+  // Send OTP email asynchronously in background
+  sendOtpEmail(user.email, otp).catch(err => console.error('[EMAIL DISPATCH ERROR]', err));
 
   return sendSuccess(res, { email: user.email }, 'OTP resent successfully');
 };
@@ -214,7 +210,9 @@ const loginUser = async (req, res) => {
     user.emailOtp = otp;
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
-    await sendOtpEmail(user.email, otp);
+
+    // Send OTP email asynchronously in background
+    sendOtpEmail(user.email, otp).catch(err => console.error('[EMAIL DISPATCH ERROR]', err));
 
     return res.status(400).json({
       success: false,

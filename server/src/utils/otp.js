@@ -8,23 +8,23 @@ const generateOtp = () => {
 
 const getTransporter = () => {
   const emailUser = process.env.EMAIL_USER;
-  const emailPass = process.env.EMAIL_PASSWORD;
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
 
-  if (!emailUser || !emailPass) {
+  if (!emailUser || !clientId || !clientSecret || !refreshToken) {
     return null;
   }
 
   return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Uses SSL (port 465) which is unblocked on mobile hotspot networks (Jio / Airtel)
+    service: 'gmail',
     auth: {
+      type: 'OAuth2',
       user: emailUser.trim(),
-      pass: emailPass.trim()
-    },
-    connectionTimeout: 5000,
-    greetingTimeout: 5000,
-    socketTimeout: 5000
+      clientId: clientId.trim(),
+      clientSecret: clientSecret.trim(),
+      refreshToken: refreshToken.trim()
+    }
   });
 };
 
