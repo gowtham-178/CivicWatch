@@ -15,11 +15,16 @@ const getTransporter = () => {
   }
 
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // Uses SSL (port 465) which is unblocked on mobile hotspot networks (Jio / Airtel)
     auth: {
       user: emailUser.trim(),
       pass: emailPass.trim()
-    }
+    },
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 5000
   });
 };
 
