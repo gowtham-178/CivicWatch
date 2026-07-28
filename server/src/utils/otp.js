@@ -56,6 +56,10 @@ const sendOtpEmail = async (email, otp) => {
       return true;
     } catch (err) {
       console.error(`[NODEMAILER ERROR] ${err.message}`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[NODEMAILER DEV FALLBACK] OTP Code for ${email} is: ${otp}`);
+        return true;
+      }
       return false;
     }
   }
