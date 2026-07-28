@@ -1,66 +1,30 @@
 const nodemailer = require('nodemailer');
 
-/**
- * Generate a 6-digit numeric OTP code
- * @returns {string} 6-digit OTP
- */
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const generateOtp = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-let cachedTransporter = null;
-
-/**
- * Get or initialize Nodemailer transporter instance
- * @returns {import('nodemailer').Transporter | null}
- */
 const getTransporter = () => {
   const emailUser = process.env.EMAIL_USER;
   const emailPass = process.env.EMAIL_PASSWORD;
 
-  if (!cachedTransporter) {
-    const service = process.env.EMAIL_SERVICE || 'gmail';
-    const host = process.env.EMAIL_HOST;
-    const port = process.env.EMAIL_PORT ? parseInt(process.env.EMAIL_PORT, 10) : 587;
-    const secure = process.env.EMAIL_SECURE === 'true';
-
-    const transportOptions = host
-      ? {
-        host,
-        port,
-        secure,
-        auth: {
-          user: emailUser,
-          pass: emailPass
-        },
-        connectionTimeout: 15000,
-        socketTimeout: 15000
-      }
-      : {
-        service,
-        auth: {
-          user: emailUser,
-          pass: emailPass
-        },
-        connectionTimeout: 15000,
-        socketTimeout: 15000
-      };
-
-    cachedTransporter = nodemailer.createTransport(transportOptions);
+  if (!emailUser || !emailPass) {
+    return null;
   }
 
-  return cachedTransporter;
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: emailUser.trim(),
+      pass: emailPass.trim()
+    }
+  });
 };
 
-/**
- * Send OTP to the specified email using Nodemailer only
- * @param {string} email - Recipient email address
- * @param {string} otp - OTP code to send
- * @returns {Promise<boolean>} Success status
- */
 const sendOtpEmail = async (email, otp) => {
-
-  if (!email || !email.includes('@')) {
+  if (!email || typeof email !== 'string' || !EMAIL_REGEX.test(email.trim())) {
     console.error('[EMAIL ERROR] Invalid or missing recipient email address.');
     return false;
   }
@@ -80,33 +44,23 @@ const sendOtpEmail = async (email, otp) => {
 
   if (transporter) {
     try {
-      const fromEmail = (process.env.EMAIL_USER && process.env.EMAIL_USER.trim()) || 'no-reply@civicwatch.org';
-
       const mailOptions = {
-        from: `"CivicWatch" <${fromEmail}>`,
+        from: `"CivicWatch" <${process.env.EMAIL_USER.trim()}>`,
         to: email.trim().toLowerCase(),
         subject: 'CivicWatch Email Verification OTP',
         html: htmlContent
       };
 
-      const sendPromise = transporter.sendMail(mailOptions);
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Nodemailer dispatch timed out after 15000ms')), 15000)
-      );
-
-      await Promise.race([sendPromise, timeoutPromise]);
+      await transporter.sendMail(mailOptions);
       console.log(`[NODEMAILER SUCCESS] OTP email successfully sent to ${email}`);
       return true;
     } catch (err) {
       console.error(`[NODEMAILER ERROR] ${err.message}`);
-      if (cachedTransporter) {
-        try { cachedTransporter.close(); } catch (_) { }
-        cachedTransporter = null;
-      }
+      return false;
     }
   }
 
-  // Development Fallback: Log to console when credentials are missing or dispatch fails
+  // Development Fallback: Log to console when credentials are missing
   console.log(`[NODEMAILER FALLBACK] OTP Code for ${email} is: ${otp}`);
   return true;
 };
