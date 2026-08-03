@@ -43,7 +43,10 @@ const getGoogleAccessToken = () => {
           if (parsed.access_token) {
             resolve(parsed.access_token);
           } else {
-            reject(new Error(parsed.error_description || parsed.error || 'Failed to obtain Google access token'));
+            const errorDetails = parsed.error
+              ? `${parsed.error}${parsed.error_description ? ` (${parsed.error_description})` : ''}`
+              : (parsed.error_description || 'Failed to obtain Google access token');
+            reject(new Error(errorDetails));
           }
         } catch (e) {
           reject(e);

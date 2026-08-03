@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet.heat';
-import { MapPin, AlertCircle, CheckCircle, Clock, Locate } from 'lucide-react';
+import { MapPin, Locate } from 'lucide-react';
 
 const MapView = ({ reports = [] }) => {
   const mapContainerRef = useRef(null);
@@ -72,18 +72,6 @@ const MapView = ({ reports = [] }) => {
       );
     } else {
       safeSetView(map, [16.4879, 80.6935], 13);
-    }
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'High':
-      case 'Critical':
-        return 'bg-red-500';
-      case 'Medium':
-        return 'bg-yellow-500';
-      default:
-        return 'bg-green-500';
     }
   };
 

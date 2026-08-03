@@ -60,24 +60,11 @@ export const authAPI = {
 export const reportsAPI = {
   getAll: (params = '') => apiFetch(`/reports${params ? `?${params}` : ''}`),
   getMyReports: () => apiFetch('/reports/my-reports'),
-  getById: (id) => apiFetch(`/reports/${id}`),
   create: (formData) => apiFetch('/reports', { method: 'POST', body: formData }),
   update: (id, data) => apiFetch(`/reports/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  delete: (id) => apiFetch(`/reports/${id}`, { method: 'DELETE' }),
-  addComment: (id, text) => apiFetch(`/reports/${id}/comments`, { method: 'POST', body: JSON.stringify({ text }) }),
   toggleUpvote: (id) => apiFetch(`/reports/${id}/upvote`, { method: 'POST' })
 };
 
 export const adminAPI = {
-  getDashboard: () => apiFetch('/admin/dashboard'),
-  getUsers: (page = 1, limit = 10) => apiFetch(`/admin/users?page=${page}&limit=${limit}`),
-  updateUserRole: (id, role) => apiFetch(`/admin/users/${id}/role`, { method: 'PUT', body: JSON.stringify({ role }) }),
-  deleteUser: (id) => apiFetch(`/admin/users/${id}`, { method: 'DELETE' }),
-  bulkUpdateRoles: (userIds, role) => apiFetch('/admin/users/bulk/role', { method: 'PUT', body: JSON.stringify({ userIds, role }) }),
-  getAttentionReports: () => apiFetch('/admin/reports/attention'),
-  bulkUpdateStatus: (reportIds, status) => apiFetch('/admin/reports/bulk/status', { method: 'PUT', body: JSON.stringify({ reportIds, status }) })
-};
-
-export const categoriesAPI = {
-  getAll: () => apiFetch('/categories')
+  getDashboard: () => apiFetch('/admin/dashboard')
 };

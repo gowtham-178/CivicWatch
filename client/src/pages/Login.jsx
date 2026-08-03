@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { MapPin, Eye, EyeOff, ShieldAlert, ArrowRight } from 'lucide-react';
+import { MapPin, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 const Login = () => {
   const [formData, setFormData] = useState({

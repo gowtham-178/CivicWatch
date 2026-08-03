@@ -123,12 +123,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const isAdmin = () => user?.role === 'admin';
-  const isUser = () => user?.role === 'user';
-
-  const getAuthHeaders = () => ({
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
-  });
 
   const value = {
     user,
@@ -137,9 +131,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     isAdmin,
-    isUser,
     loading,
-    getAuthHeaders,
     updateUser,
     loginWithToken
   };

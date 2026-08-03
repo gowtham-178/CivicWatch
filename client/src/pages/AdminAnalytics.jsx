@@ -21,7 +21,6 @@ import { TrendingUp, Clock, Users, Target } from 'lucide-react';
 
 const AdminAnalytics = () => {
   const [dashboardData, setDashboardData] = useState(null);
-  const [timeRange, setTimeRange] = useState('30');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

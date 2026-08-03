@@ -9,7 +9,7 @@ const { generateOtp, sendOtpEmail } = require('../utils/otp');
  * Register a new user
  */
 const registerUser = async (req, res) => {
-  const { name, email, password, phone, emailOrPhone, confirmpassword } = req.body;
+  const { name, email, password, phone, confirmpassword } = req.body;
 
   if (!name || !password || !confirmpassword) {
     return sendError(res, 'Name, password, and confirm password are required', 400);

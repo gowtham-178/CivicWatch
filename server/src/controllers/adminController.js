@@ -15,10 +15,6 @@ const getDashboardAnalytics = async (req, res) => {
     { $group: { _id: '$category', count: { $sum: 1 } } }
   ]);
 
-  const priorityCounts = await Report.aggregate([
-    { $group: { _id: '$priority', count: { $sum: 1 } } }
-  ]);
-
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -38,7 +34,6 @@ const getDashboardAnalytics = async (req, res) => {
   return sendSuccess(res, {
     statusCounts,
     categoryCounts,
-    priorityCounts,
     recentReports,
     userCount
   });
