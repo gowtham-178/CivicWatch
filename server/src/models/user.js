@@ -30,18 +30,7 @@ const userSchema = new mongoose.Schema(
       enum: ['user', 'admin'],
       default: 'user'
     },
-    isEmailVerified: {
-      type: Boolean,
-      default: false
-    },
-    emailOtp: {
-      type: String,
-      default: null
-    },
-    otpExpiry: {
-      type: Date,
-      default: null
-    },
+
     isActive: {
       type: Boolean,
       default: true

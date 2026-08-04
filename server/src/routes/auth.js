@@ -4,8 +4,6 @@ const { auth } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const {
   registerUser,
-  verifyOtp,
-  resendOtp,
   loginUser,
   getMyProfile,
   updateMyProfile,
@@ -13,8 +11,6 @@ const {
 } = require('../controllers/authController');
 
 router.post('/signup', asyncHandler(registerUser));
-router.post('/verify-otp', asyncHandler(verifyOtp));
-router.post('/resend-otp', asyncHandler(resendOtp));
 router.post('/login', asyncHandler(loginUser));
 
 router.get('/myprofile', auth, asyncHandler(getMyProfile));

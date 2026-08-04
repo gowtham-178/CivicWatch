@@ -56,7 +56,7 @@ VITE_API_SERVER_URL=http://127.0.0.1:5000
 | Method | Endpoint | Auth | Purpose |
 |--------|----------|------|---------|
 | POST | /api/auth/signup | ❌ | Register user |
-| POST | /api/auth/verify-otp | ❌ | Verify email |
+
 | POST | /api/auth/login | ❌ | Login user |
 | GET | /api/auth/myprofile | ✅ | Get profile |
 | PUT | /api/auth/myprofile | ✅ | Update profile |
@@ -144,7 +144,7 @@ node checkAdmins.js
 ## 📱 Key Features Quick Check
 
 ### User Features
-- [ ] Register with email OTP
+- [ ] Register with email
 - [ ] Login with email/password
 - [ ] Create report with image
 - [ ] View all reports
@@ -213,9 +213,7 @@ kill -9 <PID>
   phone: String,
   password: String (hashed),
   role: 'user' | 'admin',
-  isEmailVerified: Boolean,
-  emailOtp: String,
-  otpExpiry: Date
+  isActive: Boolean
 }
 ```
 

@@ -36,7 +36,7 @@ CivicWatch solves these problems by providing:
 ```
 
 ### 👥 1. Citizen Portal & Public Engagement
-* **Secure Authentication**: Email-verified registration utilizing one-time passwords (OTP) to eliminate spam reports and ensure community accountability.
+* **Secure Authentication**: Email-based registration with encrypted password storage to eliminate spam reports and ensure community accountability.
 * **Geo-Tagged Reporting**: Submit comprehensive issue reports featuring titles, descriptions, category tagging, priority indicators, photo evidence, and exact map location coordinates.
 * **Interactive Map Explorer**: View neighborhood issues plotted on an interactive map, enabling residents to spot nearby hazards and avoid duplicate reporting.
 * **Community Upvoting & Discussion**: Citizens can upvote high-priority issues to signal community urgency, as well as participate in public comment threads to provide real-time updates.
@@ -106,7 +106,7 @@ CivicWatch/
 ## 🛡️ Security & Governance
 
 - **Encrypted Authentication**: User passwords are securely hashed using `bcrypt` before storage. Session authorization is enforced via JSON Web Tokens (JWT).
-- **Email Verification**: One-Time Passwords (OTP) sent via Nodemailer ensure verified user identity during signup.
+- **Encrypted Passwords**: User passwords are securely hashed using `bcrypt` before storage, ensuring credential safety.
 - **Role-Based Access Control (RBAC)**: Strict segregation between citizen users and municipal administrative staff endpoints.
 - **Secure Containerization**: All microservices execute under unprivileged non-root system users (`node`, `appuser`) with automated container health probes.
 

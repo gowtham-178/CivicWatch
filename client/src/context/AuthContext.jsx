@@ -81,7 +81,6 @@ export const AuthProvider = ({ children }) => {
       return {
         success: false,
         error: data.error || 'Login failed',
-        requiresOtp: data.requiresOtp,
         email: data.email || email
       };
     } catch (error) {

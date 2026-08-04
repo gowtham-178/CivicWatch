@@ -3,7 +3,6 @@ const User = require('../models/user');
 const Admin = require('../models/admin');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
 const { generateToken } = require('../utils/jwt');
-const { generateOtp, sendOtpEmail } = require('../utils/otp');
 
 /**
  * Register a new user
@@ -40,8 +39,6 @@ const registerUser = async (req, res) => {
 
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
-  const otp = generateOtp();
-  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
   const user = new User({
     name,
@@ -49,105 +46,22 @@ const registerUser = async (req, res) => {
     phone: targetPhone || undefined,
     password: hashedPassword,
     role: 'user',
-    isEmailVerified: false,
-    emailOtp: otp,
-    otpExpiry
+    isEmailVerified: true
   });
 
-  await user.save();
-
-  // Send OTP email asynchronously in background so response isn't blocked by mail delays
-  sendOtpEmail(targetEmail, otp).catch(err => console.error('[EMAIL DISPATCH ERROR]', err));
-
-  return sendSuccess(
-    res,
-    { email: targetEmail },
-    'Registration successful. OTP sent for verification.',
-    201
-  );
-};
-
-/**
- * Verify Email OTP
- */
-const verifyOtp = async (req, res) => {
-  const { email, otp } = req.body;
-
-  if (!email || !otp) {
-    return sendError(res, 'Email and OTP are required', 400);
-  }
-
-  const targetIdentifier = email.trim();
-  const user = await User.findOne({
-    $or: [
-      { email: targetIdentifier.toLowerCase() },
-      { phone: targetIdentifier }
-    ]
-  });
-
-  if (!user) {
-    return sendError(res, 'User account not found', 404);
-  }
-
-  if (user.isEmailVerified) {
-    return sendError(res, 'Account is already verified', 400);
-  }
-
-  if (!user.otpExpiry || new Date() > user.otpExpiry) {
-    return sendError(res, 'OTP has expired. Please request a new code.', 400);
-  }
-
-  if (user.emailOtp !== otp.trim()) {
-    return sendError(res, 'Invalid OTP passcode', 400);
-  }
-
-  user.isEmailVerified = true;
-  user.emailOtp = null;
-  user.otpExpiry = null;
   await user.save();
 
   const token = generateToken(user.id, user.role);
   const userData = user.toObject();
   delete userData.password;
+  userData.id = userData._id;
 
-  return sendSuccess(res, { token, user: userData }, 'OTP verified successfully');
-};
-
-/**
- * Resend OTP
- */
-const resendOtp = async (req, res) => {
-  const { email } = req.body;
-
-  if (!email) {
-    return sendError(res, 'Email is required', 400);
-  }
-
-  const targetIdentifier = email.trim();
-  const user = await User.findOne({
-    $or: [
-      { email: targetIdentifier.toLowerCase() },
-      { phone: targetIdentifier }
-    ]
-  });
-
-  if (!user) {
-    return sendError(res, 'User account not found', 404);
-  }
-
-  if (user.isEmailVerified) {
-    return sendError(res, 'Account is already verified', 400);
-  }
-
-  const otp = generateOtp();
-  user.emailOtp = otp;
-  user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-  await user.save();
-
-  // Send OTP email asynchronously in background
-  sendOtpEmail(user.email, otp).catch(err => console.error('[EMAIL DISPATCH ERROR]', err));
-
-  return sendSuccess(res, { email: user.email }, 'OTP resent successfully');
+  return sendSuccess(
+    res,
+    { token, user: userData },
+    'Registration successful.',
+    201
+  );
 };
 
 /**
@@ -202,24 +116,6 @@ const loginUser = async (req, res) => {
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
     return sendError(res, 'Invalid credentials', 400);
-  }
-
-  if (!user.isEmailVerified) {
-    // Generate new OTP for unverified user on login attempt
-    const otp = generateOtp();
-    user.emailOtp = otp;
-    user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-    await user.save();
-
-    // Send OTP email asynchronously in background
-    sendOtpEmail(user.email, otp).catch(err => console.error('[EMAIL DISPATCH ERROR]', err));
-
-    return res.status(400).json({
-      success: false,
-      error: 'Account not verified. A fresh OTP code has been sent to your email.',
-      requiresOtp: true,
-      email: user.email
-    });
   }
 
   const token = generateToken(user.id, user.role);
@@ -356,8 +252,6 @@ const changePassword = async (req, res) => {
 
 module.exports = {
   registerUser,
-  verifyOtp,
-  resendOtp,
   loginUser,
   getMyProfile,
   updateMyProfile,

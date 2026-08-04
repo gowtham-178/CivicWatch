@@ -50,8 +50,7 @@ export async function apiFetch(endpoint, options = {}) {
 export const authAPI = {
   login: (credentials) => apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
   register: (userData) => apiFetch('/auth/signup', { method: 'POST', body: JSON.stringify(userData) }),
-  verifyOtp: (payload) => apiFetch('/auth/verify-otp', { method: 'POST', body: JSON.stringify(payload) }),
-  resendOtp: (payload) => apiFetch('/auth/resend-otp', { method: 'POST', body: JSON.stringify(payload) }),
+
   getProfile: () => apiFetch('/auth/myprofile'),
   updateProfile: (data) => apiFetch('/auth/myprofile', { method: 'PUT', body: JSON.stringify(data) }),
   changePassword: (passwords) => apiFetch('/auth/change-password', { method: 'POST', body: JSON.stringify(passwords) })

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { MapPin, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { MapPin, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -12,7 +12,6 @@ const Login = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [unverifiedState, setUnverifiedState] = useState(null);
   const [loading, setLoading] = useState(false);
   
   const { login, user } = useAuth();
@@ -32,14 +31,12 @@ const Login = () => {
       [name]: value
     }));
     setError('');
-    setUnverifiedState(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setUnverifiedState(null);
 
     const result = await login(formData.email, formData.password);
     
@@ -48,23 +45,9 @@ const Login = () => {
       navigate(redirectPath, { replace: true });
     } else {
       setError(result.error);
-      if (result.requiresOtp) {
-        setUnverifiedState({
-          email: result.email || formData.email
-        });
-      }
     }
     
     setLoading(false);
-  };
-
-  const handleVerifyNow = () => {
-    navigate('/register', {
-      state: {
-        step: 'otp',
-        email: unverifiedState?.email || formData.email
-      }
-    });
   };
 
   return (
@@ -94,16 +77,6 @@ const Login = () => {
               {error && (
                 <div className="bg-red-50/90 backdrop-blur-sm border border-red-200 text-red-600 px-4 py-3.5 rounded-xl text-sm animate-slide-up">
                   <p>{error}</p>
-                  {unverifiedState && (
-                    <button
-                      type="button"
-                      onClick={handleVerifyNow}
-                      className="mt-2.5 inline-flex items-center space-x-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors shadow-sm"
-                    >
-                      <span>Verify OTP Code Now</span>
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </button>
-                  )}
                 </div>
               )}
 
